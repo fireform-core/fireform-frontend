@@ -22,15 +22,6 @@
       "electron.js",
       "preload.js"
     ],
-    "extraResources": [
-      {
-        "from": "bin",
-        "to": "bin",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
     "mac": {
       "target": "dmg"
     },
