@@ -1,35 +1,30 @@
 {
-  "name": "fireform",
+  "name": "fireform-frontend",
   "version": "1.1.0",
   "description": "FireForm — report once, file everywhere",
   "repository": "fireform-core/fireform-frontend",
-  "main": "electron.js",
+  "main": "out/main/index.js",
   "scripts": {
-    "start": "electron .",
-    "dist": "electron-builder --publish never"
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "dist": "npm run build && electron-builder --publish never",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@vitejs/plugin-react": "^4.2.1",
     "electron": "^35.0.0",
-    "electron-builder": "^26.0.0"
+    "electron-builder": "^26.0.0",
+    "electron-vite": "^2.1.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.0"
   },
-  "build": {
-    "appId": "com.fireform.app",
-    "productName": "FireForm",
-    "files": [
-      "index.html",
-      "app.js",
-      "styles.css",
-      "electron.js",
-      "preload.js"
-    ],
-    "mac": {
-      "target": "dmg"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.5.1"
   }
 }
