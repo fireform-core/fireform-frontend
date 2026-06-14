@@ -3,6 +3,7 @@
 *.log
 dist/
 build/
+out/
 coverage/
 .DS_Store
 .idea/
