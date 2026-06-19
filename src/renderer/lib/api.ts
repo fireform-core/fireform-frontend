@@ -140,3 +140,14 @@ export async function resolvePreviewUrl(path: string): Promise<string | null> {
   }
   return null
 }
+
+export async function fetchWeatherForecast(
+  latitude: number,
+  longitude: number
+): Promise<Record<string, unknown>> {
+  const url = `${API_BASE_URL}/weather/forecast?latitude=${latitude}&longitude=${longitude}`
+  const response = await fetch(url)
+  const body = await parseJsonResponse(response)
+  if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
+  return body as Record<string, unknown>
+}
