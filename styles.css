@@ -281,8 +281,17 @@ button:hover {
 }
 
 @keyframes stt-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.35; transform: scale(0.78); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.35;
+    transform: scale(0.78);
+  }
 }
 
 .stt-status {
@@ -356,7 +365,8 @@ button:hover {
 }
 
 .tile-preview-btn {
-  margin-top: auto; /* pin to the bottom so every tile's button lines up */
+  margin-top: auto;
+  /* pin to the bottom so every tile's button lines up */
   align-self: flex-start;
   background: transparent;
   color: var(--primary-strong);
@@ -529,10 +539,21 @@ button.is-disabled:hover {
       ".      select select";
   }
 
-  .field-drag-handle { grid-area: handle; }
-  .field-row input[type="text"] { grid-area: name; }
-  .field-row select { grid-area: select; }
-  .field-delete-btn { grid-area: delete; }
+  .field-drag-handle {
+    grid-area: handle;
+  }
+
+  .field-row input[type="text"] {
+    grid-area: name;
+  }
+
+  .field-row select {
+    grid-area: select;
+  }
+
+  .field-delete-btn {
+    grid-area: delete;
+  }
 }
 
 .divider {
@@ -661,4 +682,275 @@ button.is-disabled:hover {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ─── Weather Forecast ─────────────────────────────────────────────────────── */
+
+.weather-panel {
+  display: grid;
+  gap: 20px;
+}
+
+.weather-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.weather-title {
+  margin: 0 0 4px;
+  font-size: 1.35rem;
+}
+
+/* Field selector */
+.field-selector-section {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  background: #f7fafc;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+}
+
+.field-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.field-selector-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.field-selector-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.selector-ctrl-btn {
+  background: #fff;
+  color: var(--primary-strong);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.selector-ctrl-btn:hover {
+  background: #e5ecf3;
+}
+
+/* Divider between the two control buttons */
+.selector-ctrl-btn+.selector-ctrl-btn::before {
+  content: '';
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  background: var(--panel-border);
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+/* Unit suffix inside a tab toggle */
+.tab-unit {
+  font-weight: 400;
+  font-size: 0.78rem;
+  opacity: 0.75;
+}
+
+/* Meta strip */
+.weather-meta-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 14px;
+  background: #eef6fb;
+  border: 1px solid #c6ddf0;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: var(--primary-strong);
+  font-weight: 600;
+}
+
+/* Results table */
+.weather-results {
+  display: grid;
+  gap: 12px;
+}
+
+.weather-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.weather-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  background: #fff;
+}
+
+.weather-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f1f5f9;
+  color: var(--muted);
+  font-weight: 700;
+  text-align: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--panel-border);
+  white-space: nowrap;
+}
+
+.weather-table thead th:first-child {
+  text-align: left;
+}
+
+.th-unit {
+  font-weight: 400;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.weather-table tbody tr {
+  transition: background 0.1s;
+}
+
+.weather-table tbody tr:nth-child(even) {
+  background: #f8fafb;
+}
+
+.weather-table tbody tr:hover {
+  background: #eef6fb;
+}
+
+.weather-table tbody td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #eaeef2;
+  text-align: center;
+  color: var(--text);
+}
+
+.weather-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.time-cell {
+  text-align: left !important;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.data-cell {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Modal / Popup Dialog Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e2e8f0;
+  position: relative;
+  animation: scaleIn 0.2s ease-out;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #f1f5f9;
+  border: none;
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Weather attachment badge in FillForm */
+.weather-attachment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #e6f4ea;
+  color: #137333;
+  border: 1px solid #dadce0;
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin: 8px 0 16px;
+}
+
+.weather-attachment-badge .remove-btn {
+  background: none;
+  border: none;
+  color: #137333;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 1.1rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+
+.weather-attachment-badge .remove-btn:hover {
+  color: #c5221f;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }

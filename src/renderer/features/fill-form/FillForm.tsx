@@ -5,6 +5,7 @@ import { fillTemplate, fetchModels } from '../../lib/api'
 import { saveLastOutputPath } from '../../lib/storage'
 import { pluralize } from '../../lib/utils'
 import { TYPE_VALUE_TO_LABEL } from '../../lib/constants'
+import { WeatherModal } from '../weather-forecast/WeatherForecast'
 
 export function FillForm() {
   const { templates, selectedFillIds, toggleFillSelection, setActiveTab, setPreviewPath } =
@@ -23,6 +24,8 @@ export function FillForm() {
   const [status, setStatus] = useState({ message: '', type: '' })
   const [jsonResponse, setJsonResponse] = useState<unknown>(null)
   const [selectionError, setSelectionError] = useState(false)
+  const [isWeatherOpen, setIsWeatherOpen] = useState(false)
+  const [weatherData, setWeatherData] = useState<string | null>(null)
 
   const { sttState, sttStatus, start, togglePause, stop } = useSpeechRecording(text => {
     if (!text) return
@@ -66,9 +69,13 @@ export function FillForm() {
     const results: Record<string, unknown>[] = []
     const errors: string[] = []
 
+    const finalInputText = weatherData
+      ? `${inputText.trim()}\n\n${weatherData}`
+      : inputText.trim()
+
     for (const id of selectedFillIds) {
       try {
-        const result = await fillTemplate({ template_id: id, input_text: inputText.trim(), model: selectedModel })
+        const result = await fillTemplate({ template_id: id, input_text: finalInputText, model: selectedModel })
         results.push(result)
       } catch (e: unknown) {
         const template = templates.find(t => t.id === id)
@@ -217,6 +224,31 @@ export function FillForm() {
           )}
         </select>
 
+        <p><b>External APIs</b></p>
+
+        <div className="horizontal-layout">
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={() => setIsWeatherOpen(true)}
+          >
+            Weather
+          </button>
+          {weatherData && (
+            <div className="weather-attachment-badge">
+              <span>✓ Weather data attached</span>
+              <button
+                type="button"
+                className="remove-btn"
+                onClick={() => setWeatherData(null)}
+                title="Remove weather data"
+              >
+                &times;
+              </button>
+            </div>
+          )}
+        </div>
+
         <button
           type="submit"
           className={count === 0 ? 'is-disabled' : ''}
@@ -231,6 +263,12 @@ export function FillForm() {
       {jsonResponse != null && (
         <pre className="json-output">{JSON.stringify(jsonResponse, null, 2)}</pre>
       )}
+
+      <WeatherModal
+        isOpen={isWeatherOpen}
+        onClose={() => setIsWeatherOpen(false)}
+        onAgree={(data) => setWeatherData(data)}
+      />
     </section>
   )
 }
