@@ -283,8 +283,17 @@ button:hover {
 }
 
 @keyframes stt-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.35; transform: scale(0.78); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.35;
+    transform: scale(0.78);
+  }
 }
 
 .stt-status {
@@ -518,10 +527,21 @@ button.is-disabled:hover {
       ".      select select";
   }
 
-  .field-drag-handle { grid-area: handle; }
-  .field-row input[type="text"] { grid-area: name; }
-  .field-row select { grid-area: select; }
-  .field-delete-btn { grid-area: delete; }
+  .field-drag-handle {
+    grid-area: handle;
+  }
+
+  .field-row input[type="text"] {
+    grid-area: name;
+  }
+
+  .field-row select {
+    grid-area: select;
+  }
+
+  .field-delete-btn {
+    grid-area: delete;
+  }
 }
 
 .divider {
@@ -750,12 +770,25 @@ button.is-disabled:hover {
   margin-bottom: 16px;
 }
 
+
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scaleIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

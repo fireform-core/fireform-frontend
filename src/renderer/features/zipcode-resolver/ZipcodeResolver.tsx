@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { fetchAddressLookup } from '../../lib/api'
+
+// Extend window to access the Leaflet global loaded via CDN in index.html
+declare const L: typeof import('leaflet')
 
 export interface ZipcodeModalProps {
   isOpen: boolean
@@ -14,6 +17,72 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
   const [results, setResults] = useState<Record<string, unknown>[] | null>(null)
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set())
 
+  // Refs to hold the Leaflet map instance and its markers so we never re-initialise
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<ReturnType<typeof L.map> | null>(null)
+  const markersLayerRef = useRef<ReturnType<typeof L.layerGroup> | null>(null)
+
+  // Initialise the map when the modal opens (container div is now in the DOM)
+  // Using [isOpen] as deps is critical: with [] the effect fires on first mount while
+  // isOpen is still false, so the ref div hasn't rendered yet and Leaflet throws.
+  useEffect(() => {
+    if (!isOpen || !mapContainerRef.current || mapInstanceRef.current) return
+
+    const map = L.map(mapContainerRef.current).setView([20, 0], 2)
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map)
+
+    markersLayerRef.current = L.layerGroup().addTo(map)
+    mapInstanceRef.current = map
+
+    return () => {
+      // Destroy the map when the modal closes so the next open starts fresh
+      map.remove()
+      mapInstanceRef.current = null
+      markersLayerRef.current = null
+    }
+  }, [isOpen])
+
+
+  // When results change, drop pins and fit the map to them
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    const markers = markersLayerRef.current
+    if (!map || !markers) return
+
+    markers.clearLayers()
+
+    if (!results || results.length === 0) {
+      map.setView([20, 0], 2)
+      return
+    }
+
+    const latLngs: [number, number][] = []
+    results.forEach((r, i) => {
+      const lat = r.latitude as number
+      const lon = r.longitude as number
+      latLngs.push([lat, lon])
+
+      const label = [r.place_name, r.state, r.country].filter(Boolean).join(', ')
+      const popup = `
+        <strong>${label || 'Location'}</strong><br/>
+        ${r.postal_code ? `Postal code: <b>${r.postal_code}</b><br/>` : ''}
+        ${lat.toFixed(5)}, ${lon.toFixed(5)}
+        ${results.length > 1 ? `<br/><small>Result ${i + 1} of ${results.length}</small>` : ''}
+      `
+      L.marker([lat, lon]).bindPopup(popup).addTo(markers)
+    })
+
+    if (latLngs.length === 1) {
+      map.setView(latLngs[0], 13)
+    } else {
+      map.fitBounds(latLngs, { padding: [30, 30] })
+    }
+  }, [results])
+
   if (!isOpen) return null
 
   function toggleRow(i: number) {
@@ -21,6 +90,13 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
     if (newSet.has(i)) newSet.delete(i)
     else newSet.add(i)
     setSelectedRows(newSet)
+
+    // Pan map to the selected row
+    const map = mapInstanceRef.current
+    if (map && results) {
+      const row = results[i]
+      map.setView([row.latitude as number, row.longitude as number], 13)
+    }
   }
 
   async function handleFetch(e: React.FormEvent) {
@@ -99,6 +175,12 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
                 {loading ? 'Looking up…' : 'Look Up Address'}
               </button>
             </form>
+
+            {/* Map container — kept in the DOM always so the useEffect ref works */}
+            <div
+              ref={mapContainerRef}
+              style={{ height: '200px', borderRadius: '8px', marginTop: '16px', overflow: 'hidden' }}
+            />
 
             <p className={`status${status.type ? ` ${status.type}` : ''}`} aria-live="polite">
               {status.message}
