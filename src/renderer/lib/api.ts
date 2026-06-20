@@ -144,9 +144,11 @@ export async function resolvePreviewUrl(path: string): Promise<string | null> {
 export async function fetchWeatherForecast(
   latitude: number,
   longitude: number,
+  start_date: string,
+  end_date: string,
   fields?: string[]
 ): Promise<Record<string, unknown>> {
-  let url = `${API_BASE_URL}/weather/forecast?latitude=${latitude}&longitude=${longitude}`
+  let url = `${API_BASE_URL}/weather/forecast?latitude=${latitude}&longitude=${longitude}&start_date=${start_date}&end_date=${end_date}`
   if (fields && fields.length > 0) {
     url += `&fields=${encodeURIComponent(fields.join(','))}`
   }

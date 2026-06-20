@@ -88,7 +88,7 @@ function fmt(val: number | undefined, unit: string): string {
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 function serializeWeatherData(result: WeatherResult, activeFields: typeof FIELD_CATALOGUE[number][]): string {
@@ -115,6 +115,8 @@ interface WeatherModalProps {
 export function WeatherModal({ isOpen, onClose, onAgree }: WeatherModalProps) {
   const [latitude, setLatitude] = useState('')
   const [longitude, setLongitude] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [selected, setSelected] = useState<Set<FieldKey>>(
     new Set(FIELD_CATALOGUE.map(f => f.key))
   )
@@ -156,15 +158,30 @@ export function WeatherModal({ isOpen, onClose, onAgree }: WeatherModalProps) {
 
     const lat = parseFloat(latitude)
     const lon = parseFloat(longitude)
+    const start = startDate
+    const end = endDate
+
     if (isNaN(lat) || isNaN(lon)) {
       setStatus({ message: 'Latitude and Longitude must be valid numbers.', type: 'error' })
+      return
+    }
+
+    if (start === '' || end === '') {
+      console.log('start', start)
+      console.log('end', end)
+      setStatus({ message: 'Start Date and End Date must be valid.', type: 'error' })
+      return
+    }
+
+    if (start > end) {
+      setStatus({ message: 'Start Date must be before End Date.', type: 'error' })
       return
     }
 
     try {
       setLoading(true)
       setStatus({ message: 'Fetching weather data…', type: 'info' })
-      const data = await fetchWeatherForecast(lat, lon, Array.from(selected))
+      const data = await fetchWeatherForecast(lat, lon, start, end, Array.from(selected))
       setResult(data as unknown as WeatherResult)
       setStatus({ message: 'Weather data retrieved successfully.', type: 'success' })
     } catch (err: unknown) {
@@ -237,11 +254,23 @@ export function WeatherModal({ isOpen, onClose, onAgree }: WeatherModalProps) {
                 <div className="grid-2" style={{ display: "flex", gap: "10px", margin: '10px 0 10px 0' }}>
                   <div>
                     <label htmlFor="wf-from">From</label>
-                    <input id="wf-from" aria-label="Date" type="date" />
+                    <input
+                      id="wf-from"
+                      aria-label="Date"
+                      type="date"
+                      value={startDate}
+                      onChange={e => setStartDate(e.target.value)}
+                    />
                   </div>
                   <div>
                     <label htmlFor="wf-to">To</label>
-                    <input id="wf-to" aria-label="Date" type="date" />
+                    <input
+                      id="wf-to"
+                      aria-label="Date"
+                      type="date"
+                      value={endDate}
+                      onChange={e => setEndDate(e.target.value)}
+                    />
                   </div>
                 </div>
 
@@ -307,7 +336,7 @@ export function WeatherModal({ isOpen, onClose, onAgree }: WeatherModalProps) {
                   <table className="weather-table">
                     <thead>
                       <tr>
-                        <th>Time</th>
+                        <th>Date &amp; Time</th>
                         {activeFields.map(f => (
                           <th key={f.key}>
                             {f.label}
