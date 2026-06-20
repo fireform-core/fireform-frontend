@@ -204,7 +204,7 @@ export function WeatherModal({ isOpen, onClose, onAgree }: WeatherModalProps) {
 
           {/* ── Coordinate inputs ── */}
           <form className="stacked-form" onSubmit={handleSubmit}>
-            <div className="grid-2">
+            <div className="grid-2" style={{ margin: '10px 0 0 0' }}>
               <div>
                 <label htmlFor="wf-latitude">Latitude</label>
                 <input
@@ -234,8 +234,18 @@ export function WeatherModal({ isOpen, onClose, onAgree }: WeatherModalProps) {
             {/* ── Field selector ── */}
             <div className="field-selector-section">
               <div className="field-selector-header">
-                <span className="field-selector-title">Hourly Variables</span>
-                <div className="field-selector-actions" style={{ margin: '10px 0 10px 0', display: "flex", gap: "10px" }}>
+                <div className="grid-2" style={{ display: "flex", gap: "10px", margin: '10px 0 10px 0' }}>
+                  <div>
+                    <label htmlFor="wf-from">From</label>
+                    <input id="wf-from" aria-label="Date" type="date" />
+                  </div>
+                  <div>
+                    <label htmlFor="wf-to">To</label>
+                    <input id="wf-to" aria-label="Date" type="date" />
+                  </div>
+                </div>
+
+                <div className="field-selector-actions" style={{ margin: '20px 0 10px 0', display: "flex", gap: "10px" }}>
                   <button type="button" className="selector-ctrl-btn" onClick={selectAll}>
                     Select all
                   </button>
@@ -272,6 +282,7 @@ export function WeatherModal({ isOpen, onClose, onAgree }: WeatherModalProps) {
             <button
               type="submit"
               disabled={loading || selected.size === 0}
+              style={{ margin: '10px 0 0 0' }}
             >
               {loading ? 'Fetching…' : 'Get Weather'}
             </button>
