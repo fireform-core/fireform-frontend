@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { fetchLocation } from '../../lib/api'
+import { fetchAddressLookup } from '../../lib/api'
 
 export interface ZipcodeModalProps {
   isOpen: boolean
@@ -7,107 +7,8 @@ export interface ZipcodeModalProps {
   onFetchWeather: (lat: number, lon: number) => void
 }
 
-const COUNTRIES = [
-  {"label": "Andorra", "value": "ad"},
-  {"label": "Argentina", "value": "ar"},
-  {"label": "American Samoa", "value": "as"},
-  {"label": "Austria", "value": "at"},
-  {"label": "Australia", "value": "au"},
-  {"label": "Åland Islands", "value": "ax"},
-  {"label": "Azerbaijan", "value": "az"},
-  {"label": "Bangladesh", "value": "bd"},
-  {"label": "Belgium", "value": "be"},
-  {"label": "Bulgaria", "value": "bg"},
-  {"label": "Bermuda", "value": "bm"},
-  {"label": "Brazil", "value": "br"},
-  {"label": "Belarus", "value": "by"},
-  {"label": "Canada", "value": "ca"},
-  {"label": "Switzerland", "value": "ch"},
-  {"label": "Chile", "value": "cl"},
-  {"label": "Colombia", "value": "co"},
-  {"label": "Costa Rica", "value": "cr"},
-  {"label": "Cyprus", "value": "cy"},
-  {"label": "Czechia", "value": "cz"},
-  {"label": "Germany", "value": "de"},
-  {"label": "Denmark", "value": "dk"},
-  {"label": "Dominican Republic", "value": "do"},
-  {"label": "Algeria", "value": "dz"},
-  {"label": "Estonia", "value": "ee"},
-  {"label": "Spain", "value": "es"},
-  {"label": "Finland", "value": "fi"},
-  {"label": "Federated States of Micronesia", "value": "fm"},
-  {"label": "Faroe Islands", "value": "fo"},
-  {"label": "France", "value": "fr"},
-  {"label": "United Kingdom of Great Britain and Northern Ireland", "value": "gb"},
-  {"label": "French Guiana", "value": "gf"},
-  {"label": "Guernsey", "value": "gg"},
-  {"label": "Greenland", "value": "gl"},
-  {"label": "Guadeloupe", "value": "gp"},
-  {"label": "Guatemala", "value": "gt"},
-  {"label": "Guam", "value": "gu"},
-  {"label": "Croatia", "value": "hr"},
-  {"label": "Haiti", "value": "ht"},
-  {"label": "Hungary", "value": "hu"},
-  {"label": "Ireland", "value": "ie"},
-  {"label": "Isle of Man", "value": "im"},
-  {"label": "India", "value": "in"},
-  {"label": "Iceland", "value": "is"},
-  {"label": "Italy", "value": "it"},
-  {"label": "Jersey", "value": "je"},
-  {"label": "Japan", "value": "jp"},
-  {"label": "Republic of Korea", "value": "kr"},
-  {"label": "Liechtenstein", "value": "li"},
-  {"label": "Sri Lanka", "value": "lk"},
-  {"label": "Lithuania", "value": "lt"},
-  {"label": "Luxembourg", "value": "lu"},
-  {"label": "Latvia", "value": "lv"},
-  {"label": "Monaco", "value": "mc"},
-  {"label": "Republic of Moldova", "value": "md"},
-  {"label": "Marshall Islands", "value": "mh"},
-  {"label": "The former Yugoslav Republic of Macedonia", "value": "mk"},
-  {"label": "Northern Mariana Islands", "value": "mp"},
-  {"label": "Martinique", "value": "mq"},
-  {"label": "Malta", "value": "mt"},
-  {"label": "Malawi", "value": "mw"},
-  {"label": "Mexico", "value": "mx"},
-  {"label": "Malaysia", "value": "my"},
-  {"label": "New Caledonia", "value": "nc"},
-  {"label": "Netherlands", "value": "nl"},
-  {"label": "Norway", "value": "no"},
-  {"label": "New Zealand", "value": "nz"},
-  {"label": "Peru", "value": "pe"},
-  {"label": "Philippines", "value": "ph"},
-  {"label": "Pakistan", "value": "pk"},
-  {"label": "Poland", "value": "pl"},
-  {"label": "Saint Pierre and Miquelon", "value": "pm"},
-  {"label": "Puerto Rico", "value": "pr"},
-  {"label": "Portugal", "value": "pt"},
-  {"label": "Palau", "value": "pw"},
-  {"label": "Réunion", "value": "re"},
-  {"label": "Romania", "value": "ro"},
-  {"label": "Serbia", "value": "rs"},
-  {"label": "Russian Federation", "value": "ru"},
-  {"label": "Sweden", "value": "se"},
-  {"label": "Singapore", "value": "sg"},
-  {"label": "Slovenia", "value": "si"},
-  {"label": "Svalbard and Jan Mayen Islands", "value": "sj"},
-  {"label": "Slovakia", "value": "sk"},
-  {"label": "San Marino", "value": "sm"},
-  {"label": "Thailand", "value": "th"},
-  {"label": "Turkey", "value": "tr"},
-  {"label": "Ukraine", "value": "ua"},
-  {"label": "United States of America", "value": "us"},
-  {"label": "Uruguay", "value": "uy"},
-  {"label": "Holy See", "value": "va"},
-  {"label": "United States Virgin Islands", "value": "vi"},
-  {"label": "Wallis and Futuna Islands", "value": "wf"},
-  {"label": "Mayotte", "value": "yt"},
-  {"label": "South Africa", "value": "za"}
-]
-
 export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalProps) {
-  const [city, setCity] = useState('')
-  const [country, setCountry] = useState('us')
+  const [address, setAddress] = useState('')
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState({ message: '', type: '' })
   const [results, setResults] = useState<Record<string, unknown>[] | null>(null)
@@ -128,19 +29,23 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
     setSelectedRows(new Set())
     setStatus({ message: '', type: '' })
 
-    if (!city.trim()) {
-      setStatus({ message: 'City is required.', type: 'error' })
+    if (!address.trim()) {
+      setStatus({ message: 'Address is required.', type: 'error' })
       return
     }
 
     try {
       setLoading(true)
-      setStatus({ message: 'Fetching location data…', type: 'info' })
-      const data = await fetchLocation(country, city.trim())
+      setStatus({ message: 'Looking up address…', type: 'info' })
+      const data = await fetchAddressLookup(address.trim())
       setResults(data)
-      setStatus({ message: 'Location data retrieved successfully.', type: 'success' })
+      if (data.length === 0) {
+        setStatus({ message: 'No results found for this address.', type: 'error' })
+      } else {
+        setStatus({ message: `Found ${data.length} result${data.length > 1 ? 's' : ''}.`, type: 'success' })
+      }
     } catch (err: unknown) {
-      setStatus({ message: (err as Error).message || 'Failed to fetch location data', type: 'error' })
+      setStatus({ message: (err as Error).message || 'Failed to look up address.', type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -174,36 +79,24 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
 
           <div className="weather-forecast-container">
             <form className="stacked-form" onSubmit={handleFetch}>
-              <div className="grid-2" style={{ display: "flex", gap: "10px" }}>
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="zc-city">City Name</label>
-                  <input
-                    id="zc-city"
-                    type="text"
-                    placeholder="e.g. Santa Cruz"
-                    required
-                    value={city}
-                    onChange={e => setCity(e.target.value)}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="zc-country">Country</label>
-                  <select
-                    id="zc-country"
-                    value={country}
-                    onChange={e => setCountry(e.target.value)}
-                  >
-                    {COUNTRIES.map(c => (
-                      <option key={c.value} value={c.value}>
-                        {c.label} ({c.value.toUpperCase()})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label htmlFor="zc-address">Address</label>
+                <input
+                  id="zc-address"
+                  type="text"
+                  placeholder="e.g. 1600 Amphitheatre Parkway, Mountain View, CA, US"
+                  required
+                  value={address}
+                  onChange={e => setAddress(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+                <p style={{ margin: '4px 0 0', fontSize: '0.8em', opacity: 0.65 }}>
+                  Include city, state/region, and country for best results.
+                </p>
               </div>
 
               <button type="submit" disabled={loading} style={{ alignSelf: 'flex-start' }}>
-                {loading ? 'Fetching…' : 'Fetch Location Data'}
+                {loading ? 'Looking up…' : 'Look Up Address'}
               </button>
             </form>
 
@@ -223,6 +116,7 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
                         <th>Place Name</th>
                         <th>State</th>
                         <th>County</th>
+                        <th>Country</th>
                         <th>Latitude</th>
                         <th>Longitude</th>
                       </tr>
@@ -237,10 +131,11 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
                               onChange={() => toggleRow(i)}
                             />
                           </td>
-                          <td>{r.postal_code as string}</td>
+                          <td>{(r.postal_code as string) ?? '—'}</td>
                           <td>{r.place_name as string}</td>
-                          <td>{r.state_name as string} {r.state_code ? `(${r.state_code})` : ''}</td>
-                          <td>{r.county_name as string}</td>
+                          <td>{(r.state as string) ?? '—'}</td>
+                          <td>{(r.county as string) ?? '—'}</td>
+                          <td>{(r.country as string) ?? '—'}</td>
                           <td>{r.latitude as number}</td>
                           <td>{r.longitude as number}</td>
                         </tr>
@@ -249,10 +144,6 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
                   </table>
                 </div>
               </div>
-            )}
-
-            {results && results.length === 0 && (
-              <p>No results found for {city}.</p>
             )}
           </div>
         </div>
