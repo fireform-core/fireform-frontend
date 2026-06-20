@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { fetchWeatherForecast } from '../../lib/api'
 
 // ─── Field catalogue ────────────────────────────────────────────────────────
@@ -110,19 +110,27 @@ interface WeatherModalProps {
   isOpen: boolean
   onClose: () => void
   onAgree: (weatherText: string) => void
+  initialLatitude?: number
+  initialLongitude?: number
 }
 
-export function WeatherModal({ isOpen, onClose, onAgree }: WeatherModalProps) {
-  const [latitude, setLatitude] = useState('')
-  const [longitude, setLongitude] = useState('')
+export function WeatherModal({ isOpen, onClose, onAgree, initialLatitude, initialLongitude }: WeatherModalProps) {
+  const [latitude, setLatitude] = useState(initialLatitude ? String(initialLatitude) : '')
+  const [longitude, setLongitude] = useState(initialLongitude ? String(initialLongitude) : '')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [sameDay, setSameDay] = useState(false)
   const [selected, setSelected] = useState<Set<FieldKey>>(
     new Set(FIELD_CATALOGUE.map(f => f.key))
   )
   const [status, setStatus] = useState({ message: '', type: '' })
   const [result, setResult] = useState<WeatherResult | null>(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (initialLatitude !== undefined) setLatitude(String(initialLatitude))
+    if (initialLongitude !== undefined) setLongitude(String(initialLongitude))
+  }, [initialLatitude, initialLongitude])
 
   if (!isOpen) return null
 
@@ -212,7 +220,7 @@ export function WeatherModal({ isOpen, onClose, onAgree }: WeatherModalProps) {
           {/* ── Header ── */}
           <div className="weather-header">
             <div>
-              <h2>Weather Forecast</h2>
+              <h2>Weather History & Forecast</h2>
               <p className="helper">
                 Enter coordinates and choose which hourly variables to download via Open-Meteo.
               </p>
@@ -259,17 +267,39 @@ export function WeatherModal({ isOpen, onClose, onAgree }: WeatherModalProps) {
                       aria-label="Date"
                       type="date"
                       value={startDate}
-                      onChange={e => setStartDate(e.target.value)}
+                      onChange={e => {
+                        const newDate = e.target.value
+                        setStartDate(newDate)
+                        if (sameDay) {
+                          setEndDate(newDate)
+                        }
+                      }}
                     />
                   </div>
                   <div>
-                    <label htmlFor="wf-to">To</label>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label htmlFor="wf-to">To</label>
+                      <label style={{ fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'normal', color: 'var(--text-color)' }}>
+                        <input
+                          type="checkbox"
+                          checked={sameDay}
+                          onChange={e => {
+                            const checked = e.target.checked
+                            setSameDay(checked)
+                            if (checked) setEndDate(startDate)
+                          }}
+                          style={{ margin: 0, width: 'auto' }}
+                        />
+                        Same day
+                      </label>
+                    </div>
                     <input
                       id="wf-to"
                       aria-label="Date"
                       type="date"
                       value={endDate}
                       onChange={e => setEndDate(e.target.value)}
+                      disabled={sameDay}
                     />
                   </div>
                 </div>

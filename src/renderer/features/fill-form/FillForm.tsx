@@ -6,6 +6,7 @@ import { saveLastOutputPath } from '../../lib/storage'
 import { pluralize } from '../../lib/utils'
 import { TYPE_VALUE_TO_LABEL } from '../../lib/constants'
 import { WeatherModal } from '../weather-forecast/WeatherForecast'
+import { ZipcodeModal } from '../zipcode-resolver/ZipcodeResolver'
 
 export function FillForm() {
   const { templates, selectedFillIds, toggleFillSelection, setActiveTab, setPreviewPath } =
@@ -26,6 +27,16 @@ export function FillForm() {
   const [selectionError, setSelectionError] = useState(false)
   const [isWeatherOpen, setIsWeatherOpen] = useState(false)
   const [weatherData, setWeatherData] = useState<string | null>(null)
+  const [isLocationOpen, setIsLocationOpen] = useState(false)
+  const [initialWeatherLat, setInitialWeatherLat] = useState<number | undefined>(undefined)
+  const [initialWeatherLon, setInitialWeatherLon] = useState<number | undefined>(undefined)
+
+  function handleFetchWeatherFromLocation(lat: number, lon: number) {
+    setInitialWeatherLat(lat)
+    setInitialWeatherLon(lon)
+    setIsLocationOpen(false)
+    setIsWeatherOpen(true)
+  }
 
   const { sttState, sttStatus, start, togglePause, stop } = useSpeechRecording(text => {
     if (!text) return
@@ -69,9 +80,8 @@ export function FillForm() {
     const results: Record<string, unknown>[] = []
     const errors: string[] = []
 
-    const finalInputText = weatherData
-      ? `${inputText.trim()}\n\n${weatherData}`
-      : inputText.trim()
+    let finalInputText = inputText.trim()
+    if (weatherData) finalInputText += `\n\n${weatherData}`
 
     for (const id of selectedFillIds) {
       try {
@@ -230,6 +240,13 @@ export function FillForm() {
           <button
             type="button"
             className="secondary-btn"
+            onClick={() => setIsLocationOpen(true)}
+          >
+            Location
+          </button>
+          <button
+            type="button"
+            className="secondary-btn"
             onClick={() => setIsWeatherOpen(true)}
           >
             Weather
@@ -268,6 +285,14 @@ export function FillForm() {
         isOpen={isWeatherOpen}
         onClose={() => setIsWeatherOpen(false)}
         onAgree={(data) => setWeatherData(data)}
+        initialLatitude={initialWeatherLat}
+        initialLongitude={initialWeatherLon}
+      />
+
+      <ZipcodeModal
+        isOpen={isLocationOpen}
+        onClose={() => setIsLocationOpen(false)}
+        onFetchWeather={handleFetchWeatherFromLocation}
       />
     </section>
   )

@@ -157,3 +157,26 @@ export async function fetchWeatherForecast(
   if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
   return body as Record<string, unknown>
 }
+
+export async function fetchLocation(
+  country: string,
+  city: string
+): Promise<Record<string, unknown>[]> {
+  const url = `${API_BASE_URL}/zipcode/location?country=${encodeURIComponent(country)}&city=${encodeURIComponent(city)}`
+  const response = await fetch(url)
+  const body = await parseJsonResponse(response)
+  if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
+  return body as Record<string, unknown>[]
+}
+
+export async function fetchPostalCode(
+  country: string,
+  postalCode: string
+): Promise<Record<string, unknown>> {
+  const url = `${API_BASE_URL}/zipcode/postal-code?country=${encodeURIComponent(country)}&postal_code=${encodeURIComponent(postalCode)}`
+  const response = await fetch(url)
+  const body = await parseJsonResponse(response)
+  if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
+  return body as Record<string, unknown>
+}
+
