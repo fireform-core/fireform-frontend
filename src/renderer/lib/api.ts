@@ -140,3 +140,31 @@ export async function resolvePreviewUrl(path: string): Promise<string | null> {
   }
   return null
 }
+
+export async function fetchWeatherForecast(
+  latitude: number,
+  longitude: number,
+  start_date: string,
+  end_date: string,
+  fields?: string[]
+): Promise<Record<string, unknown>> {
+  let url = `${API_BASE_URL}/weather/forecast?latitude=${latitude}&longitude=${longitude}&start_date=${start_date}&end_date=${end_date}`
+  if (fields && fields.length > 0) {
+    url += `&fields=${encodeURIComponent(fields.join(','))}`
+  }
+  const response = await fetch(url)
+  const body = await parseJsonResponse(response)
+  if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
+  return body as Record<string, unknown>
+}
+
+export async function fetchAddressLookup(
+  address: string
+): Promise<Record<string, unknown>[]> {
+  const url = `${API_BASE_URL}/zipcode/lookup-address?address=${encodeURIComponent(address)}`
+  const response = await fetch(url)
+  const body = await parseJsonResponse(response)
+  if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
+  return body as Record<string, unknown>[]
+}
+
