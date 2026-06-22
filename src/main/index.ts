@@ -36,7 +36,7 @@ function createWindow(): void {
     win.loadFile(join(__dirname, '../../renderer/index.html'))
   } else {
     win.loadURL(process.env['ELECTRON_RENDERER_URL']!)
-    win.webContents.openDevTools()
+    // win.webContents.openDevTools()
   }
 }
 
