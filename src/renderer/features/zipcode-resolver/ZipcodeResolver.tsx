@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { fetchAddressLookup } from '../../lib/api'
 
 // Extend window to access the Leaflet global loaded via CDN in index.html
-declare const L: typeof import('leaflet')
+declare const L: any
 
 export interface ZipcodeModalProps {
   isOpen: boolean
@@ -19,8 +19,8 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
 
   // Refs to hold the Leaflet map instance and its markers so we never re-initialise
   const mapContainerRef = useRef<HTMLDivElement>(null)
-  const mapInstanceRef = useRef<ReturnType<typeof L.map> | null>(null)
-  const markersLayerRef = useRef<ReturnType<typeof L.layerGroup> | null>(null)
+  const mapInstanceRef = useRef<any>(null)
+  const markersLayerRef = useRef<any>(null)
 
   // Initialise the map when the modal opens (container div is now in the DOM)
   // Using [isOpen] as deps is critical: with [] the effect fires on first mount while

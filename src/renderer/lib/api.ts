@@ -168,3 +168,31 @@ export async function fetchAddressLookup(
   return body as Record<string, unknown>[]
 }
 
+export interface FormSubmissionData {
+  id: number
+  template_id: number
+  template_name: string
+  input_text: string
+  output_pdf_path: string
+  created_at: string | null
+}
+export interface AnalyticsData {
+  total_submissions: number
+  by_template: { template_name: string; count: number }[]
+  by_date: { date: string; count: number }[]
+  common_terms: { word: string; count: number }[]
+}
+export async function fetchSubmissions(): Promise<FormSubmissionData[]> {
+  const url = `${API_BASE_URL}/forms/submissions`
+  const response = await fetch(url)
+  const body = await parseJsonResponse(response)
+  if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
+  return body as FormSubmissionData[]
+}
+export async function fetchAnalytics(): Promise<AnalyticsData> {
+  const url = `${API_BASE_URL}/forms/submissions/analytics`
+  const response = await fetch(url)
+  const body = await parseJsonResponse(response)
+  if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
+  return body as AnalyticsData
+}

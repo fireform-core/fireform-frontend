@@ -6,12 +6,14 @@ import { FillForm } from './features/fill-form/FillForm'
 import { TemplatesList } from './features/templates-list/TemplatesList'
 import { PdfPreviewer } from './components/PdfPreviewer'
 import { LoadingScreen } from './components/LoadingScreen'
+import { Submissions } from './features/submissions/Submissions'
 
 const TABS = [
   { id: 'createTemplate', label: 'Create Template' },
   { id: 'fillForm', label: 'Fill Form' },
   { id: 'templatesList', label: 'Templates' },
   { id: 'pdfPreviewer', label: 'PDF Preview' },
+  { id: 'submissions', label: 'Submissions & Analytics' },
 ]
 
 export function App() {
@@ -63,6 +65,7 @@ export function App() {
         {activeTab === 'fillForm' && <FillForm />}
         {activeTab === 'templatesList' && <TemplatesList />}
         {activeTab === 'pdfPreviewer' && <PdfPreviewer />}
+        {activeTab === 'submissions' && <Submissions />}
       </main>
     </div>
   )
