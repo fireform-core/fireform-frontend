@@ -39,17 +39,48 @@ export function TemplatesList() {
             type="button"
             className={`view-toggle-btn${view === 'list' ? ' active' : ''}`}
             aria-pressed={view === 'list'}
+            aria-label="List view"
+            title="List view"
             onClick={() => changeView('list')}
           >
-            List
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <line x1="5" y1="4" x2="14" y2="4" />
+              <line x1="5" y1="8" x2="14" y2="8" />
+              <line x1="5" y1="12" x2="14" y2="12" />
+              <circle cx="2.2" cy="4" r="0.6" fill="currentColor" stroke="none" />
+              <circle cx="2.2" cy="8" r="0.6" fill="currentColor" stroke="none" />
+              <circle cx="2.2" cy="12" r="0.6" fill="currentColor" stroke="none" />
+            </svg>
           </button>
           <button
             type="button"
             className={`view-toggle-btn${view === 'grid' ? ' active' : ''}`}
             aria-pressed={view === 'grid'}
+            aria-label="Grid view"
+            title="Grid view"
             onClick={() => changeView('grid')}
           >
-            Grid
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <rect x="2" y="2" width="5" height="5" rx="1" />
+              <rect x="9" y="2" width="5" height="5" rx="1" />
+              <rect x="2" y="9" width="5" height="5" rx="1" />
+              <rect x="9" y="9" width="5" height="5" rx="1" />
+            </svg>
           </button>
         </div>
       </div>
