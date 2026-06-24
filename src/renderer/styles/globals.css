@@ -356,6 +356,8 @@ button:hover {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  padding-right: 30px;
+  /* room for the top-right delete icon */
 }
 
 .tile-title {
@@ -566,10 +568,16 @@ button.is-disabled:hover {
 }
 
 .template-card {
+  position: relative;
   border: 1px solid #d7dde3;
   border-radius: 12px;
   padding: 14px;
   background: #fbfcfe;
+}
+
+.template-card h3 {
+  padding-right: 34px;
+  /* clear the top-right delete icon */
 }
 
 .template-card.is-clickable {
@@ -865,4 +873,105 @@ button.is-disabled:hover {
     transform: scale(1);
     opacity: 1;
   }
+}
+
+/* ---- Delete (trash) affordance — per template / form ---- */
+.item-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.template-tile:hover .item-delete-btn,
+.template-card:hover .item-delete-btn,
+.item-delete-btn:focus-visible {
+  opacity: 1;
+}
+
+.item-delete-btn:hover {
+  background: #fbe9e9;
+  color: var(--error);
+  border-color: #f3d3d3;
+  opacity: 1;
+}
+
+.item-delete-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.item-delete-btn svg {
+  display: block;
+}
+
+/* ---- Confirmation dialog (delete) — builds on the modal styles above ---- */
+.modal-content.confirm-modal {
+  max-width: 440px;
+}
+
+.confirm-danger-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #fbe9e9;
+  color: var(--error);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.confirm-message {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.confirm-message .target-name {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.confirm-error {
+  margin: 12px 0 0;
+  color: var(--error);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.modal-footer.confirm-footer {
+  justify-content: flex-end;
+}
+
+.danger-btn {
+  background: var(--error);
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.danger-btn:hover {
+  background: #8a2a2a;
+}
+
+.danger-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

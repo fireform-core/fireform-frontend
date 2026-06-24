@@ -10,6 +10,7 @@ interface AppStore {
 
   setTemplates: (templates: Template[]) => void
   upsertTemplate: (template: Template) => void
+  removeTemplate: (id: number) => void
   toggleFillSelection: (id: number) => void
   addFillSelection: (id: number) => void
   setActiveTab: (tab: string) => void
@@ -44,6 +45,13 @@ export const useStore = create<AppStore>((set, get) => ({
         : [normalized, ...templates]
     saveTemplates(updated)
     set({ templates: updated })
+  },
+
+  removeTemplate: (id) => {
+    const templates = get().templates.filter(t => t.id !== id)
+    const selectedFillIds = get().selectedFillIds.filter(i => i !== id)
+    saveTemplates(templates)
+    set({ templates, selectedFillIds })
   },
 
   toggleFillSelection: (id) => {

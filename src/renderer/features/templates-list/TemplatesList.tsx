@@ -3,6 +3,8 @@ import { useStore } from '../../store'
 import { TYPE_VALUE_TO_LABEL } from '../../lib/constants'
 import { pluralize } from '../../lib/utils'
 import { loadTemplatesView, saveTemplatesView, TemplatesView } from '../../lib/storage'
+import { useDeleteTemplate } from '../../lib/useDeleteTemplate'
+import { ConfirmDialog, TrashIcon } from '../../components/ConfirmDialog'
 
 export function TemplatesList() {
   const { templates, addFillSelection, setActiveTab, setPreviewPath } = useStore(s => ({
@@ -13,6 +15,7 @@ export function TemplatesList() {
   }))
 
   const [view, setView] = useState<TemplatesView>(loadTemplatesView)
+  const del = useDeleteTemplate()
 
   function changeView(next: TemplatesView) {
     setView(next)
@@ -110,6 +113,19 @@ export function TemplatesList() {
                   }
                 }}
               >
+                <button
+                  type="button"
+                  className="item-delete-btn"
+                  title="Delete template"
+                  aria-label={`Delete ${template.name || 'Untitled'}`}
+                  onClick={e => {
+                    e.stopPropagation()
+                    del.request(template)
+                  }}
+                  onKeyDown={e => e.stopPropagation()}
+                >
+                  <TrashIcon />
+                </button>
                 <div className="tile-body">
                   <span className="tile-title">{template.name || 'Untitled'}</span>
                   <span className="tile-meta">
@@ -149,6 +165,19 @@ export function TemplatesList() {
                   }
                 }}
               >
+                <button
+                  type="button"
+                  className="item-delete-btn"
+                  title="Delete template"
+                  aria-label={`Delete ${template.name || 'Untitled'}`}
+                  onClick={e => {
+                    e.stopPropagation()
+                    del.request(template)
+                  }}
+                  onKeyDown={e => e.stopPropagation()}
+                >
+                  <TrashIcon />
+                </button>
                 <h3>
                   {template.name || 'Untitled'} (id: {template.id ?? 'n/a'})
                 </h3>
@@ -193,6 +222,22 @@ export function TemplatesList() {
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={del.pending !== null}
+        title="Delete this template?"
+        message={
+          <>
+            You’re about to permanently delete{' '}
+            <span className="target-name">{del.pending?.name || 'Untitled'}</span>. Its saved
+            submissions and generated PDFs are removed too. This can’t be undone.
+          </>
+        }
+        busy={del.busy}
+        error={del.error}
+        onConfirm={del.confirm}
+        onCancel={del.cancel}
+      />
     </section>
   )
 }

@@ -7,6 +7,8 @@ import { pluralize } from '../../lib/utils'
 import { TYPE_VALUE_TO_LABEL } from '../../lib/constants'
 import { WeatherModal } from '../weather-forecast/WeatherForecast'
 import { ZipcodeModal } from '../zipcode-resolver/ZipcodeResolver'
+import { useDeleteTemplate } from '../../lib/useDeleteTemplate'
+import { ConfirmDialog, TrashIcon } from '../../components/ConfirmDialog'
 
 export function FillForm() {
   const { templates, selectedFillIds, toggleFillSelection, setActiveTab, setPreviewPath } =
@@ -18,6 +20,7 @@ export function FillForm() {
       setPreviewPath: s.setPreviewPath,
     }))
 
+  const del = useDeleteTemplate()
   const [inputText, setInputText] = useState('')
   const [model, setModel] = useState('')
   const [models, setModels] = useState<string[]>([])
@@ -197,6 +200,19 @@ export function FillForm() {
                     }
                   }}
                 >
+                  <button
+                    type="button"
+                    className="item-delete-btn"
+                    title="Delete template"
+                    aria-label={`Delete ${template.name || 'Untitled'}`}
+                    onClick={e => {
+                      e.stopPropagation()
+                      del.request(template)
+                    }}
+                    onKeyDown={e => e.stopPropagation()}
+                  >
+                    <TrashIcon />
+                  </button>
                   <div className="tile-body">
                     <span className="tile-title">{template.name || 'Untitled'}</span>
                     <span className="tile-meta">{pluralize(fieldCount, 'field')}</span>
@@ -298,6 +314,23 @@ export function FillForm() {
         isOpen={isLocationOpen}
         onClose={() => setIsLocationOpen(false)}
         onFetchWeather={handleFetchWeatherFromLocation}
+      />
+
+      <ConfirmDialog
+        isOpen={del.pending !== null}
+        title="Delete this template?"
+        message={
+          <>
+            You’re about to permanently delete{' '}
+            <span className="target-name">{del.pending?.name || 'Untitled'}</span>. It will be
+            removed from Fill Form and Templates, along with its saved submissions and generated
+            PDFs. This can’t be undone.
+          </>
+        }
+        busy={del.busy}
+        error={del.error}
+        onConfirm={del.confirm}
+        onCancel={del.cancel}
       />
     </section>
   )

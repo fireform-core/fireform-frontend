@@ -94,6 +94,16 @@ export async function makeFillable(pdfPath: string): Promise<Record<string, unkn
   return body as Record<string, unknown>
 }
 
+export async function deleteTemplate(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/templates/${id}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const body = await parseJsonResponse(response)
+    throw new Error(extractErrorMessage(body, response.status))
+  }
+}
+
 export async function fetchModels(): Promise<{ models: string[]; default: string }> {
   const response = await fetch(`${API_BASE_URL}/forms/models`)
   const body = await parseJsonResponse(response)
