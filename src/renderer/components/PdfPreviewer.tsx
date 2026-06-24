@@ -10,7 +10,9 @@ export function PdfPreviewer() {
   const [frameUrl, setFrameUrl] = useState('')
   const [status, setStatus] = useState({ message: '', type: '' })
   const activeObjectUrlRef = useRef<string | null>(null)
-  const prevStorePathRef = useRef(storePreviewPath)
+  // Start as null so a path that's already set when this component mounts
+  // (e.g. after navigating here from Templates) triggers a preview too.
+  const prevStorePathRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (storePreviewPath && storePreviewPath !== prevStorePathRef.current) {
