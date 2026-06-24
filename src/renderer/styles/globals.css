@@ -197,6 +197,15 @@ button:hover {
   font-size: 0.95rem;
 }
 
+.pii-notice {
+  margin: 1rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--panel-border);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .status {
   margin: 0;
   min-height: 1.4em;
@@ -561,6 +570,71 @@ button.is-disabled:hover {
   border-radius: 12px;
   padding: 14px;
   background: #fbfcfe;
+}
+
+.template-card.is-clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.template-card.is-clickable:hover {
+  border-color: #9ab1c7;
+}
+
+.template-card.is-clickable:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.panel-header h2 {
+  margin: 0;
+}
+
+.view-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.view-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--primary-strong);
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.view-toggle-btn svg {
+  display: block;
+}
+
+.view-toggle-btn:hover {
+  background: #e5ecf3;
+}
+
+.view-toggle-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.view-toggle-btn.active:hover {
+  background: var(--primary-strong);
 }
 
 .template-meta {

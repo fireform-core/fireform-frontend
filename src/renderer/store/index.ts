@@ -19,7 +19,7 @@ interface AppStore {
 export const useStore = create<AppStore>((set, get) => ({
   templates: loadTemplates(),
   selectedFillIds: [],
-  activeTab: 'createTemplate',
+  activeTab: 'fillForm',
   previewPath: loadLastOutputPath() || '',
 
   setTemplates: (templates) => {

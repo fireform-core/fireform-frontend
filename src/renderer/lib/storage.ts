@@ -2,6 +2,9 @@ import { Template } from '../types'
 
 const TEMPLATES_KEY = 'fireform.templates.v1'
 const LAST_OUTPUT_KEY = 'fireform.lastOutputPath.v1'
+const TEMPLATES_VIEW_KEY = 'fireform.templatesView.v1'
+
+export type TemplatesView = 'list' | 'grid'
 
 export function loadTemplates(): Template[] {
   try {
@@ -24,4 +27,12 @@ export function loadLastOutputPath(): string | null {
 
 export function saveLastOutputPath(path: string): void {
   localStorage.setItem(LAST_OUTPUT_KEY, path)
+}
+
+export function loadTemplatesView(): TemplatesView {
+  return localStorage.getItem(TEMPLATES_VIEW_KEY) === 'grid' ? 'grid' : 'list'
+}
+
+export function saveTemplatesView(view: TemplatesView): void {
+  localStorage.setItem(TEMPLATES_VIEW_KEY, view)
 }

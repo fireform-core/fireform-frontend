@@ -9,8 +9,8 @@ import { LoadingScreen } from './components/LoadingScreen'
 import { Submissions } from './features/submissions/Submissions'
 
 const TABS = [
-  { id: 'createTemplate', label: 'Create Template' },
   { id: 'fillForm', label: 'Fill Form' },
+  { id: 'createTemplate', label: 'Create Template' },
   { id: 'templatesList', label: 'Templates' },
   { id: 'pdfPreviewer', label: 'PDF Preview' },
   { id: 'submissions', label: 'Submissions & Analytics' },
