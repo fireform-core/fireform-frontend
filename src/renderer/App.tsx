@@ -8,8 +8,8 @@ import { PdfPreviewer } from './components/PdfPreviewer'
 import { LoadingScreen } from './components/LoadingScreen'
 
 const TABS = [
-  { id: 'createTemplate', label: 'Create Template' },
   { id: 'fillForm', label: 'Fill Form' },
+  { id: 'createTemplate', label: 'Create Template' },
   { id: 'templatesList', label: 'Templates' },
   { id: 'pdfPreviewer', label: 'PDF Preview' },
 ]
