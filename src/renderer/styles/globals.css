@@ -197,6 +197,15 @@ button:hover {
   font-size: 0.95rem;
 }
 
+.pii-notice {
+  margin: 1rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--panel-border);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .status {
   margin: 0;
   min-height: 1.4em;
