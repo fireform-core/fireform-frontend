@@ -563,6 +563,64 @@ button.is-disabled:hover {
   background: #fbfcfe;
 }
 
+.template-card.is-clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.template-card.is-clickable:hover {
+  border-color: #9ab1c7;
+}
+
+.template-card.is-clickable:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.panel-header h2 {
+  margin: 0;
+}
+
+.view-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.view-toggle-btn {
+  background: transparent;
+  color: var(--primary-strong);
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.view-toggle-btn:hover {
+  background: #e5ecf3;
+}
+
+.view-toggle-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.view-toggle-btn.active:hover {
+  background: var(--primary-strong);
+}
+
 .template-meta {
   margin: 0;
 }
