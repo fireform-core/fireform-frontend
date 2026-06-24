@@ -359,6 +359,12 @@ export function TemplateBuilder() {
       {jsonResponse != null && (
         <pre className="json-output">{JSON.stringify(jsonResponse, null, 2)}</pre>
       )}
+
+      <p className="pii-notice">
+        Templates and any form data submitted against them are stored locally on
+        this device. Any personally identifiable information stays on the machine
+        running FireForm.
+      </p>
     </section>
   )
 }

@@ -281,6 +281,11 @@ export function FillForm() {
         <pre className="json-output">{JSON.stringify(jsonResponse, null, 2)}</pre>
       )}
 
+      <p className="pii-notice">
+        Submitted form data is stored locally on this device. Any personally
+        identifiable information it contains stays on the machine running FireForm.
+      </p>
+
       <WeatherModal
         isOpen={isWeatherOpen}
         onClose={() => setIsWeatherOpen(false)}
