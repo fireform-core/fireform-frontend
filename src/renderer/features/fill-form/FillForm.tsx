@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../../store'
 import { useSpeechRecording } from './hooks'
-import { fillTemplate, fetchModels } from '../../lib/api'
-import { saveLastOutputPath } from '../../lib/storage'
+import { fillTemplate, fetchModels, pullModel } from '../../lib/api'
+import { saveLastOutputPath, loadSelectedModel, saveSelectedModel } from '../../lib/storage'
 import { pluralize } from '../../lib/utils'
 import { TYPE_VALUE_TO_LABEL } from '../../lib/constants'
 import { WeatherModal } from '../weather-forecast/WeatherForecast'
@@ -22,9 +22,12 @@ export function FillForm() {
 
   const del = useDeleteTemplate()
   const [inputText, setInputText] = useState('')
+  const AVAILABLE_MODELS = ['qwen2.5:1.5b', 'qwen2.5:3b', 'qwen2.5:7b', 'llama3.2:3b', 'mistral:7b']
+
   const [model, setModel] = useState('')
   const [models, setModels] = useState<string[]>([])
   const [defaultModel, setDefaultModel] = useState('')
+  const [isInstallingModel, setIsInstallingModel] = useState(false)
   const [status, setStatus] = useState({ message: '', type: '' })
   const [jsonResponse, setJsonResponse] = useState<unknown>(null)
   const [selectionError, setSelectionError] = useState(false)
@@ -51,12 +54,54 @@ export function FillForm() {
       .then(data => {
         setModels(data.models || [])
         setDefaultModel(data.default || '')
-        setModel(data.default || '')
+        const saved = loadSelectedModel()
+        if (saved) {
+          setModel(saved)
+        } else {
+          setModel(data.default || '')
+        }
       })
       .catch(() => {
         // leave default empty — server will use its default
       })
   }, [])
+
+  async function handleModelChange(selected: string) {
+    if (!selected) return
+    saveSelectedModel(selected)
+    setModel(selected)
+
+    // Check if the selected model is already in our list of installed models.
+    const isInstalled = models.some(m => m.toLowerCase().includes(selected.toLowerCase()))
+    if (!isInstalled) {
+      setIsInstallingModel(true)
+      setStatus({
+        message: `Model "${selected}" is not installed. Downloading and installing it now. This may take several minutes...`,
+        type: 'info'
+      })
+      try {
+        await pullModel(selected)
+        // Refresh models list
+        const data = await fetchModels()
+        setModels(data.models || [])
+        setStatus({
+          message: `Model "${selected}" downloaded and installed successfully!`,
+          type: 'success'
+        })
+      } catch (e: unknown) {
+        setStatus({
+          message: `Failed to install model "${selected}": ${(e as Error).message}`,
+          type: 'error'
+        })
+        const saved = loadSelectedModel()
+        setModel(saved || defaultModel)
+      } finally {
+        setIsInstallingModel(false)
+      }
+    } else {
+      setStatus({ message: `Switched to model: ${selected}`, type: 'info' })
+    }
+  }
 
   const count = selectedFillIds.length
 
@@ -237,17 +282,30 @@ export function FillForm() {
         <select
           id="fillModel"
           value={model}
-          onChange={e => setModel(e.target.value)}
+          onChange={e => handleModelChange(e.target.value)}
+          disabled={isInstallingModel}
         >
-          {models.length === 0 ? (
-            <option value="">(default model)</option>
-          ) : (
-            models.map(m => (
+          {Array.from(
+            new Set([
+              defaultModel,
+              ...models,
+              ...AVAILABLE_MODELS,
+            ].filter(Boolean))
+          ).map(m => {
+            const isInstalled = models.some(inst => inst.toLowerCase() === m.toLowerCase()) || m === defaultModel
+            const suffix = isInstallingModel && m === model 
+              ? ' (installing...)' 
+              : !isInstalled 
+              ? ' (not installed)' 
+              : m === defaultModel 
+              ? ' (default)' 
+              : ''
+            return (
               <option key={m} value={m}>
-                {m === defaultModel ? `${m} (default)` : m}
+                {m}{suffix}
               </option>
-            ))
-          )}
+            )
+          })}
         </select>
 
         <p><b>External APIs</b></p>
@@ -284,7 +342,8 @@ export function FillForm() {
 
         <button
           type="submit"
-          className={count === 0 ? 'is-disabled' : ''}
+          className={count === 0 || isInstallingModel ? 'is-disabled' : ''}
+          disabled={count === 0 || isInstallingModel}
         >
           {count > 1 ? `Fill ${count} Forms` : 'Fill Form'}
         </button>

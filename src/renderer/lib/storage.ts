@@ -36,3 +36,13 @@ export function loadTemplatesView(): TemplatesView {
 export function saveTemplatesView(view: TemplatesView): void {
   localStorage.setItem(TEMPLATES_VIEW_KEY, view)
 }
+
+const SELECTED_MODEL_KEY = 'fireform.selectedModel.v1'
+
+export function loadSelectedModel(): string {
+  return localStorage.getItem(SELECTED_MODEL_KEY) || ''
+}
+
+export function saveSelectedModel(model: string): void {
+  localStorage.setItem(SELECTED_MODEL_KEY, model)
+}

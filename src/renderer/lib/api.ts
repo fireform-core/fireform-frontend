@@ -111,6 +111,16 @@ export async function fetchModels(): Promise<{ models: string[]; default: string
   return body as { models: string[]; default: string }
 }
 
+export async function pullModel(model: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/forms/pull`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model }),
+  })
+  const body = await parseJsonResponse(response)
+  if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
+}
+
 export async function fillTemplate(payload: {
   template_id: number
   input_text: string
