@@ -111,6 +111,56 @@ export async function fetchModels(): Promise<{ models: string[]; default: string
   return body as { models: string[]; default: string }
 }
 
+export async function pullModel(
+  model: string,
+  onProgress: (percent: number, status: string) => void
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/forms/pull`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model }),
+  })
+
+  if (!response.ok) {
+    const body = await parseJsonResponse(response)
+    throw new Error(extractErrorMessage(body, response.status))
+  }
+
+  const reader = response.body?.getReader()
+  if (!reader) return
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
+      try {
+        const data = JSON.parse(trimmed) as Record<string, unknown>
+        if (typeof data['error'] === 'string') throw new Error(data['error'])
+        const status = typeof data['status'] === 'string' ? data['status'] : ''
+        const completed = typeof data['completed'] === 'number' ? data['completed'] : 0
+        const total = typeof data['total'] === 'number' ? data['total'] : 0
+        const percent = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0
+        onProgress(percent, status)
+      } catch (err) {
+        if (err instanceof Error && err.message && !err.message.startsWith('JSON')) {
+          throw err
+        }
+        // ignore incomplete JSON fragments
+      }
+    }
+  }
+}
+
 export async function fillTemplate(payload: {
   template_id: number
   input_text: string
