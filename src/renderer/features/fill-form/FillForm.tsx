@@ -28,6 +28,8 @@ export function FillForm() {
   const [models, setModels] = useState<string[]>([])
   const [defaultModel, setDefaultModel] = useState('')
   const [isInstallingModel, setIsInstallingModel] = useState(false)
+  const [pullPercent, setPullPercent] = useState(0)
+  const [pullStatus, setPullStatus] = useState('')
   const [status, setStatus] = useState({ message: '', type: '' })
   const [jsonResponse, setJsonResponse] = useState<unknown>(null)
   const [selectionError, setSelectionError] = useState(false)
@@ -75,28 +77,37 @@ export function FillForm() {
     const isInstalled = models.some(m => m.toLowerCase().includes(selected.toLowerCase()))
     if (!isInstalled) {
       setIsInstallingModel(true)
+      setPullPercent(0)
+      setPullStatus('Starting download…')
       setStatus({
-        message: `Model "${selected}" is not installed. Downloading and installing it now. This may take several minutes...`,
-        type: 'info'
+        message: `Downloading "${selected}" — this may take several minutes.`,
+        type: 'info',
       })
       try {
-        await pullModel(selected)
+        await pullModel(selected, (percent, statusText) => {
+          setPullPercent(percent)
+          setPullStatus(statusText || 'Downloading…')
+        })
         // Refresh models list
         const data = await fetchModels()
         setModels(data.models || [])
+        setPullPercent(100)
+        setPullStatus('Done!')
         setStatus({
           message: `Model "${selected}" downloaded and installed successfully!`,
-          type: 'success'
+          type: 'success',
         })
       } catch (e: unknown) {
         setStatus({
           message: `Failed to install model "${selected}": ${(e as Error).message}`,
-          type: 'error'
+          type: 'error',
         })
         const saved = loadSelectedModel()
         setModel(saved || defaultModel)
       } finally {
         setIsInstallingModel(false)
+        setPullPercent(0)
+        setPullStatus('')
       }
     } else {
       setStatus({ message: `Switched to model: ${selected}`, type: 'info' })
@@ -307,6 +318,21 @@ export function FillForm() {
             )
           })}
         </select>
+
+        {isInstallingModel && (
+          <div className="model-pull-progress" aria-live="polite">
+            <div className="model-pull-progress-header">
+              <span className="model-pull-status">{pullStatus}</span>
+              <span className="model-pull-percent">{pullPercent}%</span>
+            </div>
+            <div className="model-pull-bar-track" role="progressbar" aria-valuenow={pullPercent} aria-valuemin={0} aria-valuemax={100}>
+              <div
+                className="model-pull-bar-fill"
+                style={{ width: `${pullPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         <p><b>External APIs</b></p>
 
