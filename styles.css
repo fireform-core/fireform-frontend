@@ -953,4 +953,40 @@ button.is-disabled:hover {
 @keyframes scaleIn {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+} /* ---- Smooth transition animations for LLM fill completion (issue #38) ---- */
+@keyframes fill-status-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fill-result-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status {
+  animation: fill-status-in 0.35s ease-out;
+}
+
+.json-output {
+  animation: fill-result-in 0.45s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status,
+  .json-output {
+    animation: none;
+  }
 }
