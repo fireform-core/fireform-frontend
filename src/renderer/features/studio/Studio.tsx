@@ -17,6 +17,7 @@ import { saveLastOutputPath } from '../../lib/storage'
 import { WeatherModal } from '../weather-forecast/WeatherForecast'
 import { ZipcodeModal } from '../zipcode-resolver/ZipcodeResolver'
 import { DEFAULT_TEMPLATE_DIRECTORY } from '../../lib/constants'
+import { SignatureModal, type DigitalSignatureConfiguration } from '../../components/SignatureModal'
 
 export function Studio() {
   const {
@@ -56,6 +57,8 @@ export function Studio() {
   const [isFilling, setIsFilling] = useState(false)
   const [isWeatherOpen, setIsWeatherOpen] = useState(false)
   const [isZipcodeOpen, setIsZipcodeOpen] = useState(false)
+  const [isSignatureOpen, setIsSignatureOpen] = useState(false)
+  const [signature, setSignature] = useState<DigitalSignatureConfiguration | null>(null)
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'info' | 'success' | 'error' } | null>(null)
 
   const { fieldRows, addRow, removeRow, updateRow, seedFromApiFields } = useFieldRows()
@@ -92,7 +95,7 @@ export function Studio() {
     if (activeTemplate && !templateName) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setTemplateName(activeTemplate.name)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setUploadedPdfPath(activeTemplate.pdf_path)
 
       // Seed fields from active template
@@ -224,11 +227,27 @@ export function Studio() {
         ? `[FORM / TEMPLATE CONTEXT: ${templateDescription.trim()}]\n\n${narrativeText.trim()}`
         : narrativeText.trim()
 
-      const res: any = await fillTemplate({
+      const fillPayload = {
         template_id: tplId,
         input_text: combinedInput,
         model: selectedModel,
-      })
+      }
+      const res = signature
+        ? await fillTemplate(fillPayload, signature)
+        : await fillTemplate(fillPayload)
+
+      if (res instanceof Blob) {
+        const downloadUrl = URL.createObjectURL(res)
+        const downloadLink = document.createElement('a')
+        downloadLink.href = downloadUrl
+        downloadLink.download = 'signed-document.pdf'
+        document.body.appendChild(downloadLink)
+        downloadLink.click()
+        downloadLink.remove()
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+        setStatusMessage({ text: 'Document signé et téléchargé.', type: 'success' })
+        return
+      }
 
       const outPath = typeof res?.output_pdf_path === 'string' ? res.output_pdf_path : ''
       if (outPath) {
@@ -310,6 +329,8 @@ export function Studio() {
           onModelChange={setSelectedModel}
           onFillForm={handleFillForm}
           isFilling={isFilling}
+          signatureConfigured={signature !== null}
+          onOpenSignature={() => setIsSignatureOpen(true)}
           onOpenWeather={() => setIsWeatherOpen(true)}
           onOpenZipcode={() => setIsZipcodeOpen(true)}
         />
@@ -334,6 +355,18 @@ export function Studio() {
           setStatusMessage({ text: `Address located at ${lat.toFixed(4)}, ${lon.toFixed(4)}`, type: 'info' })
         }}
       />
+
+      {isSignatureOpen && (
+        <SignatureModal
+          isOpen={isSignatureOpen}
+          value={signature}
+          onSave={configuration => {
+            setSignature(configuration)
+            setIsSignatureOpen(false)
+          }}
+          onCancel={() => setIsSignatureOpen(false)}
+        />
+      )}
     </div>
   )
 }
