@@ -49,6 +49,8 @@ interface StudioSidebarProps {
   onModelChange: (model: string) => void
   onFillForm: () => void
   isFilling: boolean
+  signatureConfigured: boolean
+  onOpenSignature: () => void
   onOpenWeather: () => void
   onOpenZipcode: () => void
 }
@@ -81,6 +83,8 @@ export function StudioSidebar({
   onModelChange,
   onFillForm,
   isFilling,
+  signatureConfigured,
+  onOpenSignature,
   onOpenWeather,
   onOpenZipcode,
 }: StudioSidebarProps) {
@@ -500,14 +504,23 @@ export function StudioSidebar({
             {isRegistering ? 'Registering Template...' : 'Register Template'}
           </Button>
         ) : (
-          <Button
-            onClick={onFillForm}
-            disabled={isFilling || (!narrativeText.trim() && !selectedFieldKey)}
-            className="w-full bg-zinc-950 hover:bg-zinc-800 text-white font-semibold h-10 text-sm shadow-sm rounded-md"
-          >
-            <Sparkles className="w-4 h-4 mr-2 text-amber-300" />
-            {isFilling ? 'Filling Document...' : 'Auto-Fill & Generate PDF'}
-          </Button>
+          <>
+            <Button
+              onClick={onFillForm}
+              disabled={isFilling || (!narrativeText.trim() && !selectedFieldKey)}
+              className="w-full bg-zinc-950 hover:bg-zinc-800 text-white font-semibold h-10 text-sm shadow-sm rounded-md"
+            >
+              <Sparkles className="w-4 h-4 mr-2 text-amber-300" />
+              {isFilling ? 'Filling Document...' : 'Auto-Fill & Generate PDF'}
+            </Button>
+            <button
+              type="button"
+              onClick={onOpenSignature}
+              className="mt-2 w-full text-center text-xs font-medium text-zinc-500 hover:text-zinc-900"
+            >
+              {signatureConfigured ? '✓ Signature activée' : '+ Sign digitally'}
+            </button>
+          </>
         )}
       </div>
     </aside>

@@ -113,16 +113,49 @@ export async function fetchModels(): Promise<{ models: string[]; default: string
   return body as { models: string[]; default: string }
 }
 
-export async function fillTemplate(payload: {
+type FillTemplatePayload = {
   template_id: number
   input_text: string
   model?: string
-}): Promise<Record<string, unknown>> {
+}
+
+type FillSignature = { certificate: File; password: string }
+
+export function fillTemplate(payload: FillTemplatePayload): Promise<Record<string, unknown>>
+export function fillTemplate(
+  payload: FillTemplatePayload,
+  signature: FillSignature
+): Promise<Record<string, unknown> | Blob>
+export async function fillTemplate(
+  payload: FillTemplatePayload,
+  signature?: FillSignature
+): Promise<Record<string, unknown> | Blob> {
+  let requestBody: BodyInit
+  const headers: HeadersInit = {}
+
+  if (signature) {
+    const formData = new FormData()
+    formData.append('template_id', String(payload.template_id))
+    formData.append('input_text', payload.input_text)
+    if (payload.model) formData.append('model', payload.model)
+    formData.append('sign', 'true')
+    formData.append('cert_file', signature.certificate, signature.certificate.name)
+    formData.append('cert_password', signature.password)
+    requestBody = formData
+  } else {
+    headers['Content-Type'] = 'application/json'
+    requestBody = JSON.stringify(payload)
+  }
+
   const response = await fetch(`${API_BASE_URL}/forms/fill`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    headers,
+    body: requestBody,
   })
+  const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
+  if (response.ok && (contentType.includes('application/pdf') || (signature && !contentType.includes('json')))) {
+    return response.blob()
+  }
   const body = await parseJsonResponse(response)
   if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
   return body as Record<string, unknown>
