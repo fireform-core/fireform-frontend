@@ -54,6 +54,7 @@ export function Studio() {
   const [isMakeFillableLoading, setIsMakeFillableLoading] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
   const [isFilling, setIsFilling] = useState(false)
+  const [lastFillTime, setLastFillTime] = useState<number>(0)
   const [isWeatherOpen, setIsWeatherOpen] = useState(false)
   const [isZipcodeOpen, setIsZipcodeOpen] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'info' | 'success' | 'error' } | null>(null)
@@ -235,6 +236,7 @@ export function Studio() {
         setPreviewPath(outPath)
         setUploadedPdfPath(outPath)
         saveLastOutputPath(outPath)
+        setLastFillTime(Date.now())
         setStatusMessage({ text: 'Document filled and PDF created!', type: 'success' })
       }
     } catch (err: any) {
@@ -249,13 +251,15 @@ export function Studio() {
       {/* Status banner if active */}
       {statusMessage && (
         <div
-          className={`px-4 py-1.5 text-xs font-medium flex items-center justify-between transition-all ${
+          key={`${statusMessage.type}-${statusMessage.text}`}
+          className={`status px-4 py-1.5 text-xs font-medium flex items-center justify-between transition-all ${
             statusMessage.type === 'error'
               ? 'bg-red-600 text-white'
               : statusMessage.type === 'success'
               ? 'bg-emerald-600 text-white'
               : 'bg-zinc-900 text-white'
           }`}
+          aria-live="polite"
         >
           <span>{statusMessage.text}</span>
           <button
@@ -276,6 +280,8 @@ export function Studio() {
           fields={fieldRows}
           pdfPath={uploadedPdfPath || activeTemplate?.pdf_path}
           onFileSelect={handleFileSelect}
+          isFilling={isFilling}
+          lastFillTime={lastFillTime}
         />
 
         {/* Right Pane (1/3 width): Studio Sidebar */}
