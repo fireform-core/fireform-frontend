@@ -25,11 +25,22 @@ const NAV_ITEMS = [
 ]
 
 export function App() {
-  const { activeTab, setActiveTab, setTemplates, templates } = useStore(s => ({
+  const {
+    activeTab,
+    setActiveTab,
+    setTemplates,
+    templates,
+    modelDownload,
+    notification,
+    startModelDownload,
+  } = useStore(s => ({
     activeTab: s.activeTab,
     setActiveTab: s.setActiveTab,
     setTemplates: s.setTemplates,
     templates: s.templates,
+    modelDownload: s.modelDownload,
+    notification: s.notification,
+    startModelDownload: s.startModelDownload,
   }))
 
   const [ready, setReady] = useState(false)
@@ -37,6 +48,10 @@ export function App() {
     status: 'connected',
     detail: '',
   })
+  const downloadProgress = modelDownload?.progress
+  const downloadPercentage = downloadProgress?.completed != null && downloadProgress.total
+    ? Math.min(100, Math.round((downloadProgress.completed / downloadProgress.total) * 100))
+    : null
 
   useEffect(() => {
     waitForBackend().then(async () => {
@@ -154,6 +169,67 @@ export function App() {
           </div>
         </div>
       </header>
+      {modelDownload && (
+        <div
+          className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-zinc-200 bg-white p-3 shadow-xl"
+          role="status"
+          aria-live="polite"
+          onClick={() => setActiveTab('settings')}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-zinc-900">{modelDownload.model}</p>
+              <p className="mt-0.5 text-[11px] text-zinc-500">
+                {modelDownload.status === 'downloading'
+                  ? modelDownload.progress?.status || 'Downloading model…'
+                  : modelDownload.status === 'success'
+                    ? `${modelDownload.model} installed`
+                    : modelDownload.error}
+              </p>
+            </div>
+          </div>
+          {modelDownload.status === 'downloading' && (
+            <>
+              <progress
+                className="mt-2 h-1.5 w-full"
+                value={downloadPercentage ?? undefined}
+                max={100}
+              />
+              <p className="mt-1 text-right text-[10px] text-zinc-400">
+                {downloadPercentage == null ? 'Downloading…' : `${downloadPercentage}%`}
+              </p>
+            </>
+          )}
+          {modelDownload.status === 'error' && (
+            <button
+              type="button"
+              className="mt-2 rounded-md bg-violet-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-violet-700"
+              onClick={event => {
+                event.stopPropagation()
+                void startModelDownload(modelDownload.model, modelDownload.previousModel)
+              }}
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      )}
+      {notification && (
+        <div
+          className={cn(
+            'absolute right-4 top-14 z-20 max-w-sm rounded-lg border px-3 py-2 text-xs font-medium shadow-lg',
+            notification.type === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : notification.type === 'error'
+                ? 'border-red-200 bg-red-50 text-red-700'
+                : 'border-zinc-200 bg-zinc-50 text-zinc-700'
+          )}
+          role="status"
+          aria-live="polite"
+        >
+          {notification.text}
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden">

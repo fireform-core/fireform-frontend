@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useStore } from '../../store'
 import { useSpeechRecording } from './hooks'
-import { fillTemplate, fetchModels } from '../../lib/api'
+import { fillTemplate } from '../../lib/api'
 import { saveLastOutputPath } from '../../lib/storage'
 import { pluralize } from '../../lib/utils'
 
@@ -9,6 +9,7 @@ import { WeatherModal } from '../weather-forecast/WeatherForecast'
 import { ZipcodeModal } from '../zipcode-resolver/ZipcodeResolver'
 import { useDeleteTemplate } from '../../lib/useDeleteTemplate'
 import { ConfirmDialog, TrashIcon } from '../../components/ConfirmDialog'
+import { ModelSelector } from '../../components/ModelSelector'
 
 export function FillForm() {
   const { templates, selectedFillIds, toggleFillSelection, setActiveTab, setPreviewPath } =
@@ -23,8 +24,7 @@ export function FillForm() {
   const del = useDeleteTemplate()
   const [inputText, setInputText] = useState('')
   const [model, setModel] = useState('')
-  const [models, setModels] = useState<string[]>([])
-  const [defaultModel, setDefaultModel] = useState('')
+  const [modelBusy, setModelBusy] = useState(false)
   const [status, setStatus] = useState({ message: '', type: '' })
   const [jsonResponse, setJsonResponse] = useState<unknown>(null)
   const [selectionError, setSelectionError] = useState(false)
@@ -45,18 +45,6 @@ export function FillForm() {
     if (!text) return
     setInputText(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))
   })
-
-  useEffect(() => {
-    fetchModels()
-      .then(data => {
-        setModels(data.models || [])
-        setDefaultModel(data.default || '')
-        setModel(data.default || '')
-      })
-      .catch(() => {
-        // leave default empty — server will use its default
-      })
-  }, [])
 
   const count = selectedFillIds.length
 
@@ -239,22 +227,7 @@ export function FillForm() {
           </div>
         )}
 
-        <label htmlFor="fillModel">Extraction model</label>
-        <select
-          id="fillModel"
-          value={model}
-          onChange={e => setModel(e.target.value)}
-        >
-          {models.length === 0 ? (
-            <option value="">(default model)</option>
-          ) : (
-            models.map(m => (
-              <option key={m} value={m}>
-                {m === defaultModel ? `${m} (default)` : m}
-              </option>
-            ))
-          )}
-        </select>
+        <ModelSelector value={model} onChange={setModel} onBusyChange={setModelBusy} />
 
         <p><b>External APIs</b></p>
 
@@ -290,7 +263,8 @@ export function FillForm() {
 
         <button
           type="submit"
-          className={count === 0 ? 'is-disabled' : ''}
+          disabled={count === 0 || modelBusy}
+          className={count === 0 || modelBusy ? 'is-disabled' : ''}
         >
           {count > 1 ? `Fill ${count} Forms` : 'Fill Form'}
         </button>

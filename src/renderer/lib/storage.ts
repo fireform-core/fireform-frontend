@@ -3,6 +3,7 @@ import type { Template } from '../types'
 const TEMPLATES_KEY = 'fireform.templates.v1'
 const LAST_OUTPUT_KEY = 'fireform.lastOutputPath.v1'
 const TEMPLATES_VIEW_KEY = 'fireform.templatesView.v1'
+const SELECTED_MODEL_KEY = 'fireform.selectedModel.v1'
 
 export type TemplatesView = 'list' | 'grid'
 
@@ -35,4 +36,20 @@ export function loadTemplatesView(): TemplatesView {
 
 export function saveTemplatesView(view: TemplatesView): void {
   localStorage.setItem(TEMPLATES_VIEW_KEY, view)
+}
+
+export function loadSelectedModel(): string | null {
+  try {
+    return localStorage.getItem(SELECTED_MODEL_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function saveSelectedModel(name: string): void {
+  try {
+    localStorage.setItem(SELECTED_MODEL_KEY, name)
+  } catch {
+    // Storage may be unavailable in restricted renderer contexts.
+  }
 }
