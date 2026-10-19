@@ -21,6 +21,11 @@ export default defineConfig({
   },
   renderer: {
     root: resolve(__dirname, '.'),
+    // Backend CORS only allows :5173, so fail fast instead of drifting to another port
+    server: {
+      port: 5173,
+      strictPort: true,
+    },
     build: {
       rollupOptions: {
         input: { index: resolve(__dirname, 'index.html') },

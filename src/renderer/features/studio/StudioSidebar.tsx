@@ -8,6 +8,7 @@ import {
   Upload,
   Mic,
   MicOff,
+  Loader2,
   CloudRain,
   MapPin,
   FileCheck,
@@ -18,7 +19,7 @@ import { Input } from '../../components/ui/input'
 import { Badge } from '../../components/ui/badge'
 import { cn } from '../../lib/utils'
 import type { FieldRow } from '../../types'
-import { FIELD_TYPES } from '../../lib/constants'
+import { FIELD_TYPES, TYPE_VALUE_TO_LABEL } from '../../lib/constants'
 
 interface StudioSidebarProps {
   mode: 'builder' | 'filler'
@@ -28,6 +29,7 @@ interface StudioSidebarProps {
   templateDescription: string
   onTemplateDescriptionChange: (desc: string) => void
   selectedFile: File | null
+  hasPdf: boolean
   onFileSelect: (file: File) => void
   fieldRows: FieldRow[]
   onAddField: () => void
@@ -38,15 +40,15 @@ interface StudioSidebarProps {
   onMakeFillable: () => void
   isMakeFillableLoading: boolean
   onRegisterTemplate: () => void
+  isExistingTemplate: boolean
   isRegistering: boolean
   // Filler Props
   narrativeText: string
   onNarrativeChange: (text: string) => void
   isRecording: boolean
+  isTranscribing: boolean
   onToggleRecording: () => void
-  availableModels: string[]
-  selectedModel: string
-  onModelChange: (model: string) => void
+
   onFillForm: () => void
   isFilling: boolean
   onOpenWeather: () => void
@@ -61,6 +63,7 @@ export function StudioSidebar({
   templateDescription,
   onTemplateDescriptionChange,
   selectedFile,
+  hasPdf,
   onFileSelect,
   fieldRows,
   onAddField,
@@ -71,14 +74,13 @@ export function StudioSidebar({
   onMakeFillable,
   isMakeFillableLoading,
   onRegisterTemplate,
+  isExistingTemplate,
   isRegistering,
   narrativeText,
   onNarrativeChange,
   isRecording,
+  isTranscribing,
   onToggleRecording,
-  availableModels,
-  selectedModel,
-  onModelChange,
   onFillForm,
   isFilling,
   onOpenWeather,
@@ -148,6 +150,7 @@ export function StudioSidebar({
       {/* Scrollable Configuration Sections */}
       <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-zinc-100">
         {/* Section 1: Template Metadata (Photo 1 matching) */}
+        {mode === 'builder' && (
         <div className="p-3.5">
           <div
             onClick={() => toggleSection('template')}
@@ -162,7 +165,7 @@ export function StudioSidebar({
               <span>Template</span>
             </div>
             <span className="text-[11px] font-mono lowercase text-zinc-400 font-normal">
-              {templateName || 'sample'}
+              {templateName}
             </span>
           </div>
 
@@ -209,12 +212,13 @@ export function StudioSidebar({
               </div>
 
               <div className="text-[10px] text-zinc-400 font-mono flex items-center justify-between">
-                <span>form_type: {templateName ? templateName.toLowerCase().replace(/\s+/g, '_') : 'sample'}</span>
-                <span>PDF Ready</span>
+                <span>{templateName && `form_type: ${templateName.toLowerCase().replace(/\s+/g, '_')}`}</span>
+                <span>{hasPdf ? 'PDF Ready' : 'No PDF yet'}</span>
               </div>
             </div>
           )}
         </div>
+        )}
 
         {/* Mode Specific Section: Filler Narrative Input */}
         {mode === 'filler' && (
@@ -249,15 +253,28 @@ export function StudioSidebar({
                   <button
                     type="button"
                     onClick={onToggleRecording}
+                    disabled={isTranscribing}
                     className={cn(
-                      'absolute right-2 bottom-2 p-1.5 rounded-full transition-colors',
+                      'absolute right-2 bottom-2 p-1.5 rounded-full transition-colors disabled:opacity-60',
                       isRecording
                         ? 'bg-red-600 text-white animate-pulse'
                         : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                     )}
-                    title={isRecording ? 'Stop speech recording' : 'Record voice transcript with Whisper'}
+                    title={
+                      isTranscribing
+                        ? 'Transcribing…'
+                        : isRecording
+                          ? 'Stop speech recording'
+                          : 'Record voice transcript with Whisper'
+                    }
                   >
-                    {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                    {isTranscribing ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : isRecording ? (
+                      <MicOff className="w-3.5 h-3.5" />
+                    ) : (
+                      <Mic className="w-3.5 h-3.5" />
+                    )}
                   </button>
                 </div>
 
@@ -281,17 +298,7 @@ export function StudioSidebar({
                     <MapPin className="w-3 h-3 mr-1 text-emerald-600" />
                     Address
                   </Button>
-                  <select
-                    value={selectedModel}
-                    onChange={e => onModelChange(e.target.value)}
-                    className="h-6 text-[11px] rounded border border-zinc-200 bg-white px-1.5 font-mono text-zinc-700"
-                  >
-                    {availableModels.map(m => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
+
                 </div>
               </div>
             )}
@@ -299,6 +306,8 @@ export function StudioSidebar({
         )}
 
         {/* Section 2: Fields List (Photo 1 Matching) */}
+        {/* Fields and Field Properties are template-building tools: Builder mode only */}
+        {mode === 'builder' && (<>
         <div className="p-3.5">
           <div
             onClick={() => toggleSection('fields')}
@@ -359,23 +368,13 @@ export function StudioSidebar({
                           <div className="flex items-center gap-1 mt-0.5">
                             <span
                               className={cn(
-                                'text-[9px] uppercase font-mono px-1 rounded',
-                                isSelected
-                                  ? 'bg-zinc-800 text-zinc-200'
-                                  : 'bg-zinc-200 text-zinc-600'
-                              )}
-                            >
-                              Page 1
-                            </span>
-                            <span
-                              className={cn(
                                 'text-[9px] uppercase font-mono font-semibold px-1 rounded',
                                 isSelected
                                   ? 'bg-blue-900/60 text-blue-200'
                                   : 'bg-blue-50 text-blue-700'
                               )}
                             >
-                              {field.type === 'string' ? 'MANUAL' : field.type.toUpperCase()}
+                              {TYPE_VALUE_TO_LABEL[field.type] || field.type}
                             </span>
                           </div>
                         </div>
@@ -416,7 +415,7 @@ export function StudioSidebar({
                   size="xs"
                   onClick={onMakeFillable}
                   disabled={isMakeFillableLoading}
-                  className="flex-1 bg-zinc-900 text-white hover:bg-zinc-800 border-zinc-900 text-xs"
+                  className="flex-1 bg-zinc-900 text-white hover:bg-zinc-800 hover:text-white border-zinc-900 text-xs"
                 >
                   <Sparkles className="w-3 h-3 mr-1 text-amber-300" />
                   {isMakeFillableLoading ? 'Extracting...' : 'AI Schema'}
@@ -486,6 +485,7 @@ export function StudioSidebar({
             </div>
           )}
         </div>
+        </>)}
       </div>
 
       {/* Action Footer (Prominent Full Width Button matching Photo 1) */}
@@ -497,7 +497,9 @@ export function StudioSidebar({
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold h-10 text-sm shadow-sm rounded-md"
           >
             <FileCheck className="w-4 h-4 mr-2" />
-            {isRegistering ? 'Registering Template...' : 'Register Template'}
+            {isExistingTemplate
+              ? isRegistering ? 'Saving Changes...' : 'Save Changes'
+              : isRegistering ? 'Registering Template...' : 'Register Template'}
           </Button>
         ) : (
           <Button

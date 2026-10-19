@@ -13,7 +13,7 @@ import {
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import { resolvePreviewUrl } from '../../lib/api'
-import { cn } from '../../lib/utils'
+import { cn, withPdfViewerParams } from '../../lib/utils'
 import type { Template } from '../../types'
 
 interface DocumentViewerProps {
@@ -116,10 +116,13 @@ export function DocumentViewer({
           setDisplayMode('blank')
         }
       } else {
+        // Drop the previous document so a failed load can't leave a stale PDF on screen
+        setFrameUrl('')
         setLoadError(`Unable to preview PDF at path "${path}".`)
       }
-    } catch (err: unknown) {
-      setLoadError((err as Error)?.message || 'Error loading PDF preview.')
+    } catch (err: any) {
+      setFrameUrl('')
+      setLoadError(err?.message || 'Error loading PDF preview.')
     }
   }
 
@@ -321,7 +324,7 @@ export function DocumentViewer({
                   <iframe
                     id="blankPdfFrame"
                     title="Blank Template PDF"
-                    src={blankUrl}
+                    src={withPdfViewerParams(blankUrl)}
                     className={cn(
                       'absolute inset-0 w-full h-full border-0 bg-white transition-opacity duration-1000',
                       displayMode === 'blank' || (isAnimatingFill && !isFadingInFilled)
@@ -336,7 +339,7 @@ export function DocumentViewer({
                   <iframe
                     id="filledPdfFrame"
                     title="Filled Document PDF"
-                    src={filledUrl}
+                    src={withPdfViewerParams(filledUrl)}
                     className={cn(
                       'absolute inset-0 w-full h-full border-0 bg-white transition-opacity duration-1000',
                       displayMode === 'filled' && (!isAnimatingFill || isFadingInFilled)
@@ -351,7 +354,7 @@ export function DocumentViewer({
               <iframe
                 id="documentPdfFrame"
                 title="Template Document PDF Viewer"
-                src={frameUrl || blankUrl}
+                src={withPdfViewerParams(frameUrl || blankUrl)}
                 className="w-full h-full border-0 bg-white opacity-100 pointer-events-auto"
               />
             )}

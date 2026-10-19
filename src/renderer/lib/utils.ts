@@ -6,6 +6,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Chromium's built-in PDF viewer opens with the thumbnail side panel; #navpanes=0 starts it
+// collapsed (the viewer's menu button still opens it). URLs that already carry a fragment are left alone.
+export function withPdfViewerParams(url: string): string {
+  return url && !url.includes('#') ? `${url}#navpanes=0` : url
+}
+
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB']

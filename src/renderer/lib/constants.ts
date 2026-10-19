@@ -1,5 +1,7 @@
 export const API_BASE_URL = 'http://127.0.0.1:8000/api/v1'
 export const DEFAULT_TEMPLATE_DIRECTORY = 'data/inputs'
+// Must match the backend limit on POST /templates/upload (413 FILE_TOO_LARGE).
+export const MAX_TEMPLATE_PDF_BYTES = 10 * 1024 * 1024
 
 export const FIELD_TYPES = [
   { label: 'Text', value: 'string' },

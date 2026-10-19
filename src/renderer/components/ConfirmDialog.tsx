@@ -1,5 +1,6 @@
 import type { ReactNode} from 'react';
 import { useEffect } from 'react'
+import { Button } from './ui/button'
 
 export function TrashIcon({ size = 16 }: { size?: number }) {
   return (
@@ -59,36 +60,41 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="modal-overlay"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/45 p-4"
       onClick={e => {
         if (e.target === e.currentTarget && !busy) onCancel()
       }}
     >
       <div
-        className="modal-content confirm-modal"
+        className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white shadow-xl"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
       >
-        <div className="modal-body">
-          <span className="confirm-danger-icon" aria-hidden="true">
+        <div className="px-5 pt-5 pb-4 text-center">
+          <span
+            className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600"
+            aria-hidden="true"
+          >
             <TrashIcon size={22} />
           </span>
-          <h3 id="confirm-dialog-title">{title}</h3>
-          <p className="confirm-message">{message}</p>
+          <h3 id="confirm-dialog-title" className="text-sm font-semibold text-zinc-900">
+            {title}
+          </h3>
+          <p className="mt-1 text-xs text-zinc-600">{message}</p>
           {error && (
-            <p className="confirm-error" role="alert">
+            <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700" role="alert">
               {error}
             </p>
           )}
         </div>
-        <div className="modal-footer confirm-footer">
-          <button type="button" className="secondary-btn" onClick={onCancel} disabled={busy}>
+        <div className="flex justify-end gap-2 border-t border-zinc-200 px-5 py-3">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
             {cancelLabel}
-          </button>
-          <button type="button" className="danger-btn" onClick={onConfirm} disabled={busy}>
+          </Button>
+          <Button type="button" variant="destructive" onClick={onConfirm} disabled={busy}>
             {busy ? 'Deleting…' : confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, dialog } from 'electron'
 import { join } from 'path'
 import type { ChildProcess } from 'child_process';
 import { spawn } from 'child_process'
@@ -25,6 +25,20 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
     },
+  })
+
+  // The renderer cancels unload (beforeunload) when Studio has unsaved work; Electron would
+  // then silently ignore the close/reload/quit, so ask the user instead.
+  win.webContents.on('will-prevent-unload', event => {
+    const choice = dialog.showMessageBoxSync(win, {
+      type: 'question',
+      buttons: ['Leave', 'Stay'],
+      defaultId: 1,
+      cancelId: 1,
+      message: 'You have unsaved changes in FireForm.',
+      detail: 'Leave and discard them?',
+    })
+    if (choice === 0) event.preventDefault()
   })
 
   win.webContents.session.setPermissionRequestHandler(

@@ -12,6 +12,7 @@ import {
 import { useStore } from '../store'
 import { resolvePreviewUrl } from '../lib/api'
 import { saveLastOutputPath } from '../lib/storage'
+import { withPdfViewerParams } from '../lib/utils'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Badge } from './ui/badge'
@@ -50,11 +51,9 @@ export function PdfPreviewer({ initialPath }: PdfPreviewerProps = {}) {
       setFrameUrl(url)
       setStatus({ message: `Loaded: ${raw}`, type: 'success' })
     } else {
-      const likelyLocal = !/^https?:\/\//i.test(raw) && !raw.startsWith('/')
+      setFrameUrl('')
       setStatus({
-        message: likelyLocal
-          ? `Could not preview "${raw}". It looks like a server-local path.`
-          : `Could not load PDF at specified path.`,
+        message: `Could not load "${raw}". The file was not found or the backend is unreachable.`,
         type: 'error',
       })
     }
@@ -202,7 +201,7 @@ export function PdfPreviewer({ initialPath }: PdfPreviewerProps = {}) {
             <iframe
               id="pdfFrame"
               title="PDF Inbuilt Document Preview"
-              src={frameUrl}
+              src={withPdfViewerParams(frameUrl)}
               className="w-full h-full border-0 bg-white"
             />
           </div>

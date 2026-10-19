@@ -30,13 +30,15 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
   const [results, setResults] = useState<Record<string, unknown>[] | null>(null)
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set())
 
+  // Leaflet comes from a CDN <script>; it is missing when the app starts offline
+  const leafletLoaded = typeof L !== 'undefined'
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markersLayerRef = useRef<any>(null)
 
   // Initialise the map when the modal opens
   useEffect(() => {
-    if (!isOpen || !mapContainerRef.current || mapInstanceRef.current) return
+    if (!isOpen || !mapContainerRef.current || mapInstanceRef.current || !leafletLoaded) return
 
     const map = L.map(mapContainerRef.current).setView([20, 0], 2)
 
@@ -53,7 +55,7 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
       mapInstanceRef.current = null
       markersLayerRef.current = null
     }
-  }, [isOpen])
+  }, [isOpen, leafletLoaded])
 
   // When results change, drop pins and fit the map
   useEffect(() => {
@@ -211,7 +213,14 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
 
           {/* Interactive Leaflet Map Container */}
           <div className="border border-zinc-200 rounded-lg overflow-hidden h-48 bg-zinc-100 shadow-inner relative">
-            <div ref={mapContainerRef} className="w-full h-full" />
+            {leafletLoaded ? (
+              <div ref={mapContainerRef} className="w-full h-full" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center p-4 text-center text-xs text-zinc-500">
+                Map unavailable: the map library could not be loaded (are you offline?). Address
+                lookup still works.
+              </div>
+            )}
           </div>
 
           {/* Status Message */}

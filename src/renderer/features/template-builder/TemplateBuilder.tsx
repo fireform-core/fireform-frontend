@@ -24,6 +24,7 @@ export function TemplateBuilder() {
     useFieldRows()
 
   const [templateName, setTemplateName] = useState('')
+  const [templateDescription, setTemplateDescription] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadedPath, setUploadedPath] = useState<string | null>(null)
   const [uploadedFieldCount, setUploadedFieldCount] = useState<number | null>(null)
@@ -167,6 +168,7 @@ export function TemplateBuilder() {
       setStatus({ message: 'Creating template...', type: 'info' })
       const body = await createTemplate({
         name: templateName.trim(),
+        description: templateDescription.trim(),
         pdf_path: pdfPath!,
         fields: collected.value!,
       })
@@ -174,6 +176,7 @@ export function TemplateBuilder() {
       upsertTemplate({
         id: body['id'] as number,
         name: (body['name'] as string) || '',
+        description: (body['description'] as string) || '',
         pdf_path: (body['pdf_path'] as string) || '',
         fields: (body['fields'] as Record<string, string>) || {},
       })
@@ -237,6 +240,19 @@ export function TemplateBuilder() {
           value={templateName}
           onChange={e => setTemplateName(e.target.value)}
         />
+        <label htmlFor="templateDescription">Template Description</label>
+        <textarea
+          id="templateDescription"
+          rows={3}
+          value={templateDescription}
+          onChange={e => setTemplateDescription(e.target.value)}
+          placeholder="Describe what this form is used for..."
+          className="w-full text-sm rounded-md border border-zinc-200 bg-white p-2.5 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 resize-none font-sans"
+        />
+        <p className="helper">
+          Describe the form, not the incident. Use one or two sentences and avoid personal
+          or sensitive information.
+        </p>
 
         <label>Template PDF File</label>
         <input

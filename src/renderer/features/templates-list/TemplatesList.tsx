@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   FileText,
   Search,
@@ -8,6 +8,7 @@ import {
   Layers,
   Trash2,
   Plus,
+  Info,
 } from 'lucide-react'
 import { useStore } from '../../store'
 import { TYPE_VALUE_TO_LABEL } from '../../lib/constants'
@@ -15,6 +16,7 @@ import { pluralize, cn } from '../../lib/utils'
 import type { TemplatesView } from '../../lib/storage'
 import { loadTemplatesView, saveTemplatesView } from '../../lib/storage'
 import { useDeleteTemplate } from '../../lib/useDeleteTemplate'
+import { useStudioDiscardGuard } from '../../lib/useStudioDiscardGuard'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -52,15 +54,31 @@ function getFieldEntries(fields: Record<string, any> = {}): Array<{ name: string
 }
 
 export function TemplatesList() {
-  const { templates, setActiveTab, setPreviewPath, setActiveTemplateId } = useStore(s => ({
+  const { templates, setActiveTab, setPreviewPath } = useStore(s => ({
     templates: s.templates,
     setActiveTab: s.setActiveTab,
     setPreviewPath: s.setPreviewPath,
-    setActiveTemplateId: s.setActiveTemplateId,
   }))
 
   const [view, setView] = useState<TemplatesView>(loadTemplatesView)
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedDescription, setSelectedDescription] = useState<{
+    name: string
+    description: string
+  } | null>(null)
+
+  useEffect(() => {
+    if (!selectedDescription) return
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setSelectedDescription(null)
+      }
+    }
+
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [selectedDescription])
   const del = useDeleteTemplate()
 
   function changeView(next: TemplatesView) {
@@ -68,14 +86,19 @@ export function TemplatesList() {
     saveTemplatesView(next)
   }
 
+  // Asks before replacing an unsaved Studio draft
+  const studioGuard = useStudioDiscardGuard()
+
   function handleOpenInStudio(templateId: number) {
-    setActiveTemplateId(templateId)
-    setActiveTab('studio')
+    studioGuard.open(templateId)
   }
 
   function handlePreview(pdfPath: string) {
     setPreviewPath(pdfPath)
     setActiveTab('pdfPreviewer')
+  }
+  function handleViewDescription(name: string, description: string) {
+    setSelectedDescription({ name, description })
   }
 
   const filteredTemplates = useMemo(() => {
@@ -136,10 +159,7 @@ export function TemplatesList() {
           </div>
 
           <Button
-            onClick={() => {
-              setActiveTemplateId(null)
-              setActiveTab('studio')
-            }}
+            onClick={() => studioGuard.open(null)}
             className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs h-8"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
@@ -224,6 +244,15 @@ export function TemplatesList() {
                       <Eye className="w-3 h-3 mr-1" />
                       Preview
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => handleViewDescription(tpl.name, tpl.description)}
+                      className="text-zinc-600 hover:text-zinc-900 text-xs"
+                    >
+                      <Info className="w-3 h-3 mr-1" />
+                      Description
+                    </Button>
 
                     <div className="flex items-center gap-1">
                       <Button
@@ -294,6 +323,15 @@ export function TemplatesList() {
                           Preview
                         </Button>
                         <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => handleViewDescription(tpl.name, tpl.description)}
+                          className="text-zinc-600 hover:text-zinc-900 text-xs"
+                        >
+                          <Info className="w-3 h-3 mr-1" />
+                          Description
+                        </Button>
+                        <Button
                           variant="default"
                           size="xs"
                           onClick={() => handleOpenInStudio(tpl.id)}
@@ -319,6 +357,16 @@ export function TemplatesList() {
         </div>
       )}
 
+      {/* Unsaved Studio Draft Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(studioGuard.pending)}
+        title="Unsaved Changes"
+        message={`Discard unsaved changes to ${studioGuard.draftName.trim() ? `"${studioGuard.draftName.trim()}"` : 'the new template'}?`}
+        confirmLabel="Discard"
+        onConfirm={studioGuard.confirm}
+        onCancel={studioGuard.cancel}
+      />
+
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={Boolean(del.pending)}
@@ -330,6 +378,56 @@ export function TemplatesList() {
         onConfirm={del.confirm}
         onCancel={del.cancel}
       />
+      {selectedDescription && (
+        <div
+          className="modal-overlay"
+          onClick={e => {
+            if (e.target === e.currentTarget) {
+              setSelectedDescription(null)
+            }
+          }}
+        >
+          <div
+            className="modal-content"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="template-description-title"
+          >
+            <div className="modal-body">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded bg-zinc-100 flex items-center justify-center text-zinc-700">
+                  <Info className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3
+                    id="template-description-title"
+                    className="text-sm font-semibold text-zinc-900"
+                  >
+                    Template Description
+                  </h3>
+                  <p className="text-[10px] text-zinc-500">
+                    {selectedDescription.name}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-sm leading-6 text-zinc-700 whitespace-pre-wrap">
+                {selectedDescription.description || 'No description provided.'}
+              </p>
+            </div>
+
+            <div className="modal-footer">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setSelectedDescription(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
