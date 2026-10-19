@@ -296,7 +296,7 @@ export function FillForm() {
         </button>
       </form>
 
-      <p className={`status${status.type ? ` ${status.type}` : ''}`} aria-live="polite">
+ <p key={`${status.type}-${status.message}`} className={`status${status.type ? ` ${status.type}` : ''}`} aria-live="polite">
         {status.message}
       </p>
       {jsonResponse != null && (
