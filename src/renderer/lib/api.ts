@@ -154,16 +154,113 @@ export async function deleteTemplate(id: number): Promise<void> {
   }
 }
 
-export async function fetchModels(): Promise<{ models: string[]; default: string }> {
-  const response = await fetch(`${API_BASE_URL}/forms/models`)
+export interface LLMModelInfo {
+  name: string
+  size_gb?: number
+  quantization?: string
+  loaded?: boolean
+  installed?: boolean
+}
+
+export interface DownloadableModelInfo {
+  name: string
+  installed: false
+}
+
+export interface LLMModelChoice {
+  provider: string
+  model: string
+}
+
+export interface LLMProviderModels {
+  provider: string
+  available: boolean
+  default_model?: string | null
+  detail?: string | null
+  error_code?: string | null
+  models: LLMModelInfo[]
+  downloadable?: DownloadableModelInfo[]
+}
+
+export interface LLMModelsResponse {
+  default: LLMModelChoice
+  providers: LLMProviderModels[]
+}
+
+export interface ModelProgress {
+  status: string
+  completed?: number
+  total?: number
+}
+
+export async function fetchLLMModels(refresh = false): Promise<LLMModelsResponse> {
+  const query = refresh ? '?refresh=true' : ''
+  const response = await fetch(`${API_BASE_URL}/system/llm/models${query}`)
   const body = await parseJsonResponse(response)
   if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
-  return body as { models: string[]; default: string }
+  return body as LLMModelsResponse
+}
+
+export async function pullModel(
+  model: string,
+  onProgress: (progress: ModelProgress) => void
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/system/llm/pull`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider: 'ollama', model }),
+  })
+  if (!response.ok) {
+    const body = await parseJsonResponse(response)
+    throw new Error(extractErrorMessage(body, response.status))
+  }
+  if (!response.body) throw new Error('Model download did not return a stream.')
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let sawSuccess = false
+  let streamError = ''
+
+  const processLine = (line: string): void => {
+    if (!line.trim()) return
+    let event: Record<string, unknown>
+    try {
+      event = JSON.parse(line) as Record<string, unknown>
+    } catch {
+      throw new Error('Model download returned invalid progress data.')
+    }
+    if (typeof event['error'] === 'string') {
+      streamError = event['error']
+      return
+    }
+
+    const progress: ModelProgress = {
+      status: typeof event['status'] === 'string' ? event['status'] : '',
+      completed: typeof event['completed'] === 'number' ? event['completed'] : undefined,
+      total: typeof event['total'] === 'number' ? event['total'] : undefined,
+    }
+    onProgress(progress)
+    if (progress.status === 'success') sawSuccess = true
+  }
+
+  while (true) {
+    const { value, done } = await reader.read()
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+    for (const line of lines) processLine(line)
+    if (done) break
+  }
+  if (buffer.trim()) processLine(buffer)
+  if (streamError) throw new Error(streamError)
+  if (!sawSuccess) throw new Error('Model download ended without success.')
 }
 
 export async function fillTemplate(payload: {
   template_id: number
   input_text: string
+  provider?: string
   model?: string
 }): Promise<Record<string, unknown>> {
   const response = await fetch(`${API_BASE_URL}/forms/fill`, {

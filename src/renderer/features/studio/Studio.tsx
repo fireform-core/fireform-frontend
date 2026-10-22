@@ -58,7 +58,7 @@ export function Studio() {
   const setUploadedPdfPath = (path: string | null) => setDraft({ uploadedPdfPath: path })
 
   // Filler state
-  const selectedModel = useStore(s => s.selectedModel) || 'qwen2.5:3b'
+  const selectedLLM = useStore(s => s.selectedLLM)
   const [weatherCoords, setWeatherCoords] = useState<{ lat: number; lon: number } | null>(null)
 
   // Modals & Loaders
@@ -350,6 +350,10 @@ export function Studio() {
       setStatusMessage({ text: 'Please select or register a template first.', type: 'error' })
       return
     }
+    if (!selectedLLM) {
+      setStatusMessage({ text: 'Select an available provider and model in Settings first.', type: 'error' })
+      return
+    }
 
     setIsFilling(true)
     setStatusMessage({ text: 'Running LLM pipeline to fill document...', type: 'info' })
@@ -357,7 +361,8 @@ export function Studio() {
       const res: any = await fillTemplate({
         template_id: tplId,
         input_text: narrativeText.trim(),
-        model: selectedModel,
+        provider: selectedLLM.provider,
+        model: selectedLLM.model,
       })
 
       const outPath = typeof res?.output_pdf_path === 'string' ? res.output_pdf_path : ''

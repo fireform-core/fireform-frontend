@@ -1,6 +1,27 @@
 import { create } from 'zustand'
 import type { FieldRow, Template } from '../types'
-import { loadTemplates, saveTemplates, loadLastOutputPath } from '../lib/storage'
+import { fetchLLMModels, pullModel, type LLMModelChoice, type ModelProgress } from '../lib/api'
+import {
+  loadTemplates,
+  saveTemplates,
+  loadLastOutputPath,
+  loadSelectedLLM,
+  saveSelectedLLM,
+} from '../lib/storage'
+
+export interface ModelDownloadState {
+  provider: string
+  model: string
+  previousSelection: LLMModelChoice | null
+  status: 'downloading' | 'success' | 'error'
+  progress: ModelProgress | null
+  error: string
+}
+
+export interface AppNotification {
+  text: string
+  type: 'success' | 'error'
+}
 
 // Unsaved Studio Builder draft. Memory only (never localStorage) so it survives tab switches.
 export interface StudioDraft {
@@ -43,7 +64,9 @@ interface AppStore {
   // Narrative edited since the last successful fill
   narrativeDirty: boolean
   studioDraft: StudioDraft
-  selectedModel: string
+  selectedLLM: LLMModelChoice | null
+  modelDownload: ModelDownloadState | null
+  notification: AppNotification | null
 
   setTemplates: (templates: Template[]) => void
   upsertTemplate: (template: Template) => void
@@ -59,7 +82,9 @@ interface AppStore {
   setStudioDraft: (patch: Partial<StudioDraft>) => void
   setStudioFieldRows: (rows: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void
   resetStudioDraft: () => void
-  setSelectedModel: (model: string) => void
+  setSelectedLLM: (selection: LLMModelChoice | null) => void
+  startModelDownload: (provider: string, model: string) => Promise<void>
+  clearNotification: () => void
 }
 
 // Unsaved changes compared with the saved template (or anything entered for a new one)
@@ -86,8 +111,9 @@ export const useStore = create<AppStore>((set, get) => ({
   narrativeText: '',
   narrativeDirty: false,
   studioDraft: EMPTY_STUDIO_DRAFT,
-  // '' until the user picks one or Studio applies the backend default
-  selectedModel: '',
+  selectedLLM: loadSelectedLLM(),
+  modelDownload: null,
+  notification: null,
 
   setTemplates: (templates) => {
     saveTemplates(templates)
@@ -162,5 +188,78 @@ export const useStore = create<AppStore>((set, get) => ({
     })),
   // Discard the draft; keeps the Builder/Filler mode the user is in
   resetStudioDraft: () => set(state => ({ studioDraft: { ...EMPTY_STUDIO_DRAFT, mode: state.studioDraft.mode } })),
-  setSelectedModel: (selectedModel) => set({ selectedModel }),
+  setSelectedLLM: (selectedLLM) => {
+    saveSelectedLLM(selectedLLM)
+    set({ selectedLLM })
+  },
+  startModelDownload: async (provider, model) => {
+    if (get().modelDownload?.status === 'downloading') return
+
+    const previousSelection = get().selectedLLM
+    set({
+      modelDownload: {
+        provider,
+        model,
+        previousSelection,
+        status: 'downloading',
+        progress: null,
+        error: '',
+      },
+    })
+
+    try {
+      await pullModel(model, progress => {
+        set(state => ({
+          modelDownload: state.modelDownload
+            ? { ...state.modelDownload, progress }
+            : state.modelDownload,
+        }))
+      })
+      const refreshed = await fetchLLMModels(true)
+      const installed = refreshed.providers
+        .find(item => item.provider === provider)
+        ?.models.some(item => item.name === model && item.installed === true)
+      if (!installed) throw new Error(`${model} completed downloading but is not listed as installed.`)
+
+      saveSelectedLLM({ provider, model })
+      set({
+        selectedLLM: { provider, model },
+        modelDownload: {
+          provider,
+          model,
+          previousSelection,
+          status: 'success',
+          progress: { status: 'success' },
+          error: '',
+        },
+        notification: { text: `${model} installed`, type: 'success' },
+      })
+      setTimeout(() => set({ notification: null }), 5000)
+      setTimeout(() => set(state => (
+        state.modelDownload?.model === model && state.modelDownload.status === 'success'
+          ? { modelDownload: null }
+          : state
+      )), 5000)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Model download failed.'
+      set({
+        modelDownload: {
+          provider,
+          model,
+          previousSelection,
+          status: 'error',
+          progress: null,
+          error: message,
+        },
+        notification: { text: message, type: 'error' },
+      })
+      setTimeout(() => set({ notification: null }), 7000)
+      setTimeout(() => set(state => (
+        state.modelDownload?.model === model && state.modelDownload.status === 'error'
+          ? { modelDownload: null }
+          : state
+      )), 7000)
+    }
+  },
+  clearNotification: () => set({ notification: null }),
 }))
