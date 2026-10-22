@@ -8,14 +8,17 @@ import {
   AlertCircle,
   CheckCircle2,
   Download,
+  PenLine,
 } from 'lucide-react'
 import { useStore } from '../store'
 import { resolvePreviewUrl } from '../lib/api'
 import { saveLastOutputPath } from '../lib/storage'
 import { withPdfViewerParams } from '../lib/utils'
+import { embedSignatureInPdf, signedFileName } from '../lib/pdfSignature'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Badge } from './ui/badge'
+import { SignatureModal } from './SignatureModal'
 
 export interface PdfPreviewerProps {
   initialPath?: string
@@ -27,6 +30,9 @@ export function PdfPreviewer({ initialPath }: PdfPreviewerProps = {}) {
   const [inputPath, setInputPath] = useState(initialPath || storePreviewPath || '')
   const [frameUrl, setFrameUrl] = useState('')
   const [status, setStatus] = useState<{ message: string; type: 'info' | 'success' | 'error' | '' }>({ message: '', type: '' })
+  const [isSignOpen, setIsSignOpen] = useState(false)
+  const [signBusy, setSignBusy] = useState(false)
+  const [signError, setSignError] = useState<string | null>(null)
   const activeObjectUrlRef = useRef<string | null>(null)
   const prevStorePathRef = useRef<string | null>(null)
 
@@ -78,6 +84,34 @@ export function PdfPreviewer({ initialPath }: PdfPreviewerProps = {}) {
     triggerPreview(path)
   }
 
+  // Draw-to-sign flow: fetch the currently previewed PDF, stamp the signature
+  // onto it with pdf-lib, and export the signed copy as a download.
+  async function handleSign(signaturePng: string) {
+    setSignBusy(true)
+    setSignError(null)
+    try {
+      const response = await fetch(frameUrl)
+      if (!response.ok) throw new Error(`Could not read the PDF (HTTP ${response.status}).`)
+      const pdfBytes = await response.arrayBuffer()
+      const signed = await embedSignatureInPdf(pdfBytes, signaturePng)
+      const blob = new Blob([signed as BlobPart], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = signedFileName(fileName)
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+      setIsSignOpen(false)
+      setStatus({ message: `Signed PDF exported: ${a.download}`, type: 'success' })
+    } catch (e) {
+      setSignError(e instanceof Error ? e.message : 'Failed to sign the PDF.')
+    } finally {
+      setSignBusy(false)
+    }
+  }
+
   const fileName = inputPath ? inputPath.split('/').pop() : 'No PDF Loaded'
 
   return (
@@ -106,6 +140,19 @@ export function PdfPreviewer({ initialPath }: PdfPreviewerProps = {}) {
         <div className="flex items-center gap-2">
           {frameUrl && (
             <>
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => {
+                  setSignError(null)
+                  setIsSignOpen(true)
+                }}
+                title="Draw a signature and export a signed copy of this PDF"
+                className="text-zinc-700 hover:text-zinc-900 bg-white text-xs"
+              >
+                <PenLine className="w-3.5 h-3.5 mr-1" />
+                Sign PDF
+              </Button>
               <Button
                 variant="outline"
                 size="xs"
@@ -231,7 +278,16 @@ export function PdfPreviewer({ initialPath }: PdfPreviewerProps = {}) {
           </div>
         )}
       </div>
+
+      <SignatureModal
+        isOpen={isSignOpen}
+        busy={signBusy}
+        error={signError}
+        onClose={() => {
+          if (!signBusy) setIsSignOpen(false)
+        }}
+        onSign={handleSign}
+      />
     </div>
   )
 }
-
