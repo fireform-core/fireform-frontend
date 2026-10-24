@@ -127,26 +127,31 @@ export function FillForm() {
   const isRecording = sttState === 'recording'
   const isPaused = sttState === 'paused'
   const isTranscribing = sttState === 'transcribing'
+  const sttDotClass = isRecording
+    ? 'h-[9px] w-[9px] shrink-0 rounded-full bg-[#a43434] animate-pulse'
+    : isPaused
+      ? 'h-[9px] w-[9px] shrink-0 rounded-full bg-[#125a86]'
+      : 'h-[9px] w-[9px] shrink-0 rounded-full bg-[#c2ccd6]'
 
   return (
-    <section className="panel card">
-      <h2>Fill Form</h2>
-      <form className="stacked-form" onSubmit={handleSubmit}>
-        <label htmlFor="inputText">Incident Input Text</label>
+    <section className="grid gap-3.5 rounded-[14px] border border-[#d7dde3] bg-white p-[18px] shadow-[0_10px_28px_rgba(16,44,70,0.09)]">
+      <h2 className="mb-3.5 text-xl font-semibold">Fill Form</h2>
+      <form className="grid gap-2.5" onSubmit={handleSubmit}>
+        <label htmlFor="inputText" className="font-semibold">Incident Input Text</label>
 
-        <div className={`stt-controls${isRecording ? ' is-recording' : ''}${isPaused ? ' is-paused' : ''}`}>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="secondary-btn stt-btn"
+            className="inline-flex items-center gap-[7px] justify-self-start rounded-[10px] border border-[#d7dde3] bg-[#f1f5f9] px-3.5 py-2 font-semibold text-[#0b4568] hover:bg-[#e5ecf3] disabled:cursor-not-allowed disabled:opacity-50"
             disabled={isRecording || isPaused || isTranscribing}
             onClick={start}
           >
-            <span className="stt-dot" aria-hidden="true" />
+            <span className={sttDotClass} aria-hidden="true" />
             Record
           </button>
           <button
             type="button"
-            className="secondary-btn stt-btn"
+            className="inline-flex items-center gap-[7px] justify-self-start rounded-[10px] border border-[#d7dde3] bg-[#f1f5f9] px-3.5 py-2 font-semibold text-[#0b4568] hover:bg-[#e5ecf3] disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!isRecording && !isPaused}
             onClick={togglePause}
           >
@@ -154,18 +159,19 @@ export function FillForm() {
           </button>
           <button
             type="button"
-            className="secondary-btn stt-btn"
+            className="inline-flex items-center gap-[7px] justify-self-start rounded-[10px] border border-[#d7dde3] bg-[#f1f5f9] px-3.5 py-2 font-semibold text-[#0b4568] hover:bg-[#e5ecf3] disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!isRecording && !isPaused}
             onClick={stop}
           >
             Stop &amp; Transcribe
           </button>
-          <span className="stt-status" aria-live="polite">
+          <span className="min-h-[1.2em] text-[0.92rem] text-[#576779]" aria-live="polite">
             {sttStatus}
           </span>
         </div>
 
         <textarea
+          className="w-full rounded-[10px] border border-[#bcc8d6] bg-white px-3 py-2.5 text-[#1f2a36] focus:border-[#125a86] focus:outline-none focus:ring-2 focus:ring-[#125a86]"
           id="inputText"
           rows={6}
           placeholder="Describe the incident using natural language, or use the recorder above..."
@@ -173,15 +179,15 @@ export function FillForm() {
           onChange={e => setInputText(e.target.value)}
         />
 
-        <label>Forms to fill</label>
-        <p className={`helper${selectionError ? ' error' : ''}`} aria-live="polite">
+        <label className="font-semibold">Forms to fill</label>
+        <p className={selectionError ? 'm-0 text-[0.95rem] font-semibold text-[#a43434]' : 'm-0 text-[0.95rem] text-[#576779]'} aria-live="polite">
           {!count ? 'Select one or more forms to fill.' : `${pluralize(count, 'form')} selected.`}
         </p>
 
         {!templates.length ? (
-          <p className="empty-state">No templates yet — create one in the Create Template tab.</p>
+          <p className="rounded-[10px] border border-dashed border-[#bcc8d6] bg-[#f8fafb] p-3.5 text-[#576779]">No templates yet — create one in the Create Template tab.</p>
         ) : (
-          <div className="template-tiles">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-3.5">
             {templates.map(template => {
               const selected = selectedFillIds.includes(template.id)
               const fieldCount =
@@ -194,7 +200,7 @@ export function FillForm() {
 
                 <div
                   key={template.id}
-                  className={`template-tile${selected ? ' selected' : ''}`}
+                  className={selected ? 'relative flex min-h-[112px] cursor-pointer flex-col gap-1.5 rounded-xl border border-[#125a86] bg-[#eef7ff] p-4 shadow-[inset_0_0_0_1px_#125a86] transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#125a86]' : 'relative flex min-h-[112px] cursor-pointer flex-col gap-1.5 rounded-xl border border-[#d7dde3] bg-[#fbfcfe] p-4 transition hover:border-[#9ab1c7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#125a86]'}
                   role="button"
                   tabIndex={0}
                   aria-pressed={selected}
@@ -208,7 +214,7 @@ export function FillForm() {
                 >
                   <button
                     type="button"
-                    className="item-delete-btn"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent p-0 text-base font-semibold leading-none text-[#576779] hover:border-[#f3d3d3] hover:bg-[#fbe9e9] hover:text-[#a43434]"
                     title="Delete template"
                     aria-label={`Delete ${template.name || 'Untitled'}`}
                     onClick={e => {
@@ -219,13 +225,13 @@ export function FillForm() {
                   >
                     <TrashIcon />
                   </button>
-                  <div className="tile-body">
-                    <span className="tile-title">{template.name || 'Untitled'}</span>
-                    <span className="tile-meta">{pluralize(fieldCount, 'field')}</span>
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className="font-bold text-[#1f2a36] [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden break-words">{template.name || 'Untitled'}</span>
+                    <span className="text-[0.85rem] text-[#576779]">{pluralize(fieldCount, 'field')}</span>
                   </div>
                   <button
                     type="button"
-                    className="tile-preview-btn"
+                    className="mt-auto self-start rounded-lg border border-[#d7dde3] bg-transparent px-2.5 py-[5px] text-[0.82rem] font-semibold text-[#0b4568] hover:bg-[#e5ecf3]"
                     onClick={e => {
                       e.stopPropagation()
                       handleTilePreview(template.pdf_path || '')
@@ -239,8 +245,9 @@ export function FillForm() {
           </div>
         )}
 
-        <label htmlFor="fillModel">Extraction model</label>
+        <label htmlFor="fillModel" className="font-semibold">Extraction model</label>
         <select
+          className="w-full rounded-[10px] border border-[#bcc8d6] bg-white px-3 py-2.5 text-[#1f2a36] focus:border-[#125a86] focus:outline-none focus:ring-2 focus:ring-[#125a86]"
           id="fillModel"
           value={model}
           onChange={e => setModel(e.target.value)}
@@ -258,27 +265,27 @@ export function FillForm() {
 
         <p><b>External APIs</b></p>
 
-        <div className="horizontal-layout">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="secondary-btn"
+            className="justify-self-start rounded-[10px] border border-[#d7dde3] bg-[#f1f5f9] px-3.5 py-2 font-semibold text-[#0b4568] hover:bg-[#e5ecf3] disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setIsLocationOpen(true)}
           >
             Location
           </button>
           <button
             type="button"
-            className="secondary-btn"
+            className="justify-self-start rounded-[10px] border border-[#d7dde3] bg-[#f1f5f9] px-3.5 py-2 font-semibold text-[#0b4568] hover:bg-[#e5ecf3] disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setIsWeatherOpen(true)}
           >
             Weather
           </button>
           {weatherData && (
-            <div className="weather-attachment-badge">
+            <div className="mt-2 mb-4 inline-flex items-center gap-2 rounded-2xl border border-[#dadce0] bg-[#e6f4ea] px-3 py-1.5 text-[0.85rem] font-medium text-[#137333]">
               <span>✓ Weather data attached</span>
               <button
                 type="button"
-                className="remove-btn"
+                className="inline-flex items-center px-1 text-[1.1rem] font-bold leading-none text-[#137333] hover:text-[#c5221f]"
                 onClick={() => setWeatherData(null)}
                 title="Remove weather data"
               >
@@ -290,20 +297,20 @@ export function FillForm() {
 
         <button
           type="submit"
-          className={count === 0 ? 'is-disabled' : ''}
+          className={count === 0 ? 'cursor-not-allowed rounded-[10px] bg-[#c2ccd6] px-3.5 py-2.5 font-bold text-white' : 'rounded-[10px] bg-[#125a86] px-3.5 py-2.5 font-bold text-white hover:bg-[#0b4568]'}
         >
           {count > 1 ? `Fill ${count} Forms` : 'Fill Form'}
         </button>
       </form>
 
-      <p className={`status${status.type ? ` ${status.type}` : ''}`} aria-live="polite">
+      <p className={status.type === 'success' ? 'm-0 min-h-[1.4em] text-[#1a7f4b]' : status.type === 'error' ? 'm-0 min-h-[1.4em] text-[#a43434]' : 'm-0 min-h-[1.4em] text-[#576779]'} aria-live="polite">
         {status.message}
       </p>
       {jsonResponse != null && (
-        <pre className="json-output">{JSON.stringify(jsonResponse, null, 2)}</pre>
+        <pre className="m-0 max-h-[280px] overflow-auto whitespace-pre-wrap break-words rounded-[10px] border border-[#d7dde3] bg-[#f7fafc] px-3 py-2.5 font-mono text-[0.88rem]">{JSON.stringify(jsonResponse, null, 2)}</pre>
       )}
 
-      <p className="pii-notice">
+      <p className="m-0 text-[0.95rem] text-[#576779]">
         Submitted form data is stored locally on this device. Any personally
         identifiable information it contains stays on the machine running FireForm.
       </p>
@@ -328,7 +335,7 @@ export function FillForm() {
         message={
           <>
             You’re about to permanently delete{' '}
-            <span className="target-name">{del.pending?.name || 'Untitled'}</span>. It will be
+            <span className="font-semibold">{del.pending?.name || 'Untitled'}</span>. It will be
             removed from Fill Form and Templates, along with its saved submissions and generated
             PDFs. This can’t be undone.
           </>
