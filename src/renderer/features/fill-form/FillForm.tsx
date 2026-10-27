@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useStore } from '../../store'
 import { useSpeechRecording } from './hooks'
-import { fillTemplate, fetchModels } from '../../lib/api'
+import { fillTemplate } from '../../lib/api'
 import { saveLastOutputPath } from '../../lib/storage'
 import { pluralize } from '../../lib/utils'
 
@@ -9,22 +9,21 @@ import { WeatherModal } from '../weather-forecast/WeatherForecast'
 import { ZipcodeModal } from '../zipcode-resolver/ZipcodeResolver'
 import { useDeleteTemplate } from '../../lib/useDeleteTemplate'
 import { ConfirmDialog, TrashIcon } from '../../components/ConfirmDialog'
+import { ModelSelector } from '../../components/ModelSelector'
 
 export function FillForm() {
-  const { templates, selectedFillIds, toggleFillSelection, setActiveTab, setPreviewPath } =
+  const { templates, selectedFillIds, toggleFillSelection, setActiveTab, setPreviewPath, selectedLLM } =
     useStore(s => ({
       templates: s.templates,
       selectedFillIds: s.selectedFillIds,
       toggleFillSelection: s.toggleFillSelection,
       setActiveTab: s.setActiveTab,
       setPreviewPath: s.setPreviewPath,
+      selectedLLM: s.selectedLLM,
     }))
 
   const del = useDeleteTemplate()
   const [inputText, setInputText] = useState('')
-  const [model, setModel] = useState('')
-  const [models, setModels] = useState<string[]>([])
-  const [defaultModel, setDefaultModel] = useState('')
   const [status, setStatus] = useState({ message: '', type: '' })
   const [jsonResponse, setJsonResponse] = useState<unknown>(null)
   const [selectionError, setSelectionError] = useState(false)
@@ -46,18 +45,6 @@ export function FillForm() {
     setInputText(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))
   })
 
-  useEffect(() => {
-    fetchModels()
-      .then(data => {
-        setModels(data.models || [])
-        setDefaultModel(data.default || '')
-        setModel(data.default || '')
-      })
-      .catch(() => {
-        // leave default empty — server will use its default
-      })
-  }, [])
-
   const count = selectedFillIds.length
 
   async function handleSubmit(e: React.FormEvent) {
@@ -77,7 +64,10 @@ export function FillForm() {
       return
     }
 
-    const selectedModel = model || undefined
+    if (!selectedLLM) {
+      setStatus({ message: 'Select an available provider and model in Settings first.', type: 'error' })
+      return
+    }
     setStatus({ message: `Filling ${pluralize(count, 'form')}…`, type: 'info' })
 
     const results: Record<string, unknown>[] = []
@@ -88,7 +78,12 @@ export function FillForm() {
 
     for (const id of selectedFillIds) {
       try {
-        const result = await fillTemplate({ template_id: id, input_text: finalInputText, model: selectedModel })
+        const result = await fillTemplate({
+          template_id: id,
+          input_text: finalInputText,
+          provider: selectedLLM.provider,
+          model: selectedLLM.model,
+        })
         results.push(result)
       } catch (e: unknown) {
         const template = templates.find(t => t.id === id)
@@ -239,22 +234,7 @@ export function FillForm() {
           </div>
         )}
 
-        <label htmlFor="fillModel">Extraction model</label>
-        <select
-          id="fillModel"
-          value={model}
-          onChange={e => setModel(e.target.value)}
-        >
-          {models.length === 0 ? (
-            <option value="">(default model)</option>
-          ) : (
-            models.map(m => (
-              <option key={m} value={m}>
-                {m === defaultModel ? `${m} (default)` : m}
-              </option>
-            ))
-          )}
-        </select>
+        <ModelSelector />
 
         <p><b>External APIs</b></p>
 
@@ -290,13 +270,14 @@ export function FillForm() {
 
         <button
           type="submit"
+          disabled={count === 0}
           className={count === 0 ? 'is-disabled' : ''}
         >
           {count > 1 ? `Fill ${count} Forms` : 'Fill Form'}
         </button>
       </form>
 
- <p key={`${status.type}-${status.message}`} className={`status${status.type ? ` ${status.type}` : ''}`} aria-live="polite">
+      <p key={`${status.type}-${status.message}`} className={`status${status.type ? ` ${status.type}` : ''}`} aria-live="polite">
         {status.message}
       </p>
       {jsonResponse != null && (

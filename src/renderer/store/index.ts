@@ -1,6 +1,38 @@
 import { create } from 'zustand'
 import type { FieldRow, Template } from '../types'
-import { loadTemplates, saveTemplates, loadLastOutputPath } from '../lib/storage'
+import {
+  fetchLLMModels,
+  pullModel,
+  type LLMModelChoice,
+  type LLMModelsResponse,
+  type LLMProviderName,
+  type ModelProgress,
+} from '../lib/api'
+import { isUsable, reconcileChoice } from '../lib/llmModels'
+import {
+  loadTemplates,
+  saveTemplates,
+  loadLastOutputPath,
+  loadSelectedLLM,
+  loadPinnedLLMModels,
+  savePinnedLLMModels,
+  saveSelectedLLM,
+  type PinnedLLMModels,
+} from '../lib/storage'
+
+export interface ModelDownloadState {
+  provider: string
+  model: string
+  previousSelection: LLMModelChoice | null
+  status: 'downloading' | 'success' | 'error'
+  progress: ModelProgress | null
+  error: string
+}
+
+export interface AppNotification {
+  text: string
+  type: 'success' | 'error'
+}
 
 // Unsaved Studio Builder draft. Memory only (never localStorage) so it survives tab switches.
 export interface StudioDraft {
@@ -32,6 +64,9 @@ const EMPTY_STUDIO_DRAFT: StudioDraft = {
   descriptionEdited: false,
 }
 
+let llmCatalogRefresh: Promise<LLMModelsResponse> | null = null
+let queuedLLMCatalogRefresh: Promise<LLMModelsResponse> | null = null
+
 interface AppStore {
   templates: Template[]
   selectedFillIds: number[]
@@ -43,7 +78,11 @@ interface AppStore {
   // Narrative edited since the last successful fill
   narrativeDirty: boolean
   studioDraft: StudioDraft
-  selectedModel: string
+  selectedLLM: LLMModelChoice | null
+  llmCatalog: LLMModelsResponse | null
+  pinnedLLMModels: PinnedLLMModels
+  modelDownload: ModelDownloadState | null
+  notification: AppNotification | null
 
   setTemplates: (templates: Template[]) => void
   upsertTemplate: (template: Template) => void
@@ -59,7 +98,11 @@ interface AppStore {
   setStudioDraft: (patch: Partial<StudioDraft>) => void
   setStudioFieldRows: (rows: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void
   resetStudioDraft: () => void
-  setSelectedModel: (model: string) => void
+  setSelectedLLM: (selection: LLMModelChoice | null) => void
+  setPinnedLLMModels: (provider: LLMProviderName, models: string[]) => void
+  refreshLLMModels: (afterCurrent?: boolean) => Promise<LLMModelsResponse>
+  startModelDownload: (provider: string, model: string) => Promise<void>
+  clearNotification: () => void
 }
 
 // Unsaved changes compared with the saved template (or anything entered for a new one)
@@ -86,8 +129,11 @@ export const useStore = create<AppStore>((set, get) => ({
   narrativeText: '',
   narrativeDirty: false,
   studioDraft: EMPTY_STUDIO_DRAFT,
-  // '' until the user picks one or Studio applies the backend default
-  selectedModel: '',
+  selectedLLM: loadSelectedLLM(),
+  llmCatalog: null,
+  pinnedLLMModels: loadPinnedLLMModels(),
+  modelDownload: null,
+  notification: null,
 
   setTemplates: (templates) => {
     saveTemplates(templates)
@@ -162,5 +208,147 @@ export const useStore = create<AppStore>((set, get) => ({
     })),
   // Discard the draft; keeps the Builder/Filler mode the user is in
   resetStudioDraft: () => set(state => ({ studioDraft: { ...EMPTY_STUDIO_DRAFT, mode: state.studioDraft.mode } })),
-  setSelectedModel: (selectedModel) => set({ selectedModel }),
+  setSelectedLLM: (selectedLLM) => {
+    saveSelectedLLM(selectedLLM)
+    set({ selectedLLM })
+  },
+  setPinnedLLMModels: (provider, models) => {
+    const pinnedLLMModels = { ...get().pinnedLLMModels, [provider]: [...new Set(models)] }
+    savePinnedLLMModels(pinnedLLMModels)
+    set({ pinnedLLMModels })
+  },
+  refreshLLMModels: (afterCurrent = false) => {
+    if (llmCatalogRefresh) {
+      if (!afterCurrent) return llmCatalogRefresh
+      if (!queuedLLMCatalogRefresh) {
+        const currentRefresh = llmCatalogRefresh
+        queuedLLMCatalogRefresh = currentRefresh
+          .then(
+            () => get().refreshLLMModels(),
+            () => get().refreshLLMModels()
+          )
+          .finally(() => {
+            queuedLLMCatalogRefresh = null
+          })
+      }
+      return queuedLLMCatalogRefresh
+    }
+
+    llmCatalogRefresh = fetchLLMModels(true)
+      .then(catalog => {
+        const selected = get().selectedLLM
+        const nextSelection = reconcileChoice(catalog, selected)
+        const selectedProvider = selected
+          ? catalog.providers.find(provider => provider.provider === selected.provider)
+          : undefined
+        const selectionDisappeared = Boolean(selected && !isUsable(selectedProvider, selected.model))
+        const selectionChanged = selected?.provider !== nextSelection?.provider
+          || selected?.model !== nextSelection?.model
+        if (selectionChanged) saveSelectedLLM(nextSelection)
+
+        const currentPinned = get().pinnedLLMModels
+        const nextPinned: PinnedLLMModels = {}
+        for (const provider of catalog.providers) {
+          if (!['ollama', 'gemini', 'openai', 'anthropic', 'custom'].includes(provider.provider)) continue
+          const name = provider.provider as LLMProviderName
+          const availableModels = new Set([
+            ...provider.models.map(model => model.name),
+            ...(provider.downloadable || []).map(model => model.name),
+          ])
+          const pinned = (currentPinned[name] || []).filter(model => availableModels.has(model))
+          if (pinned.length) nextPinned[name] = pinned
+        }
+        if (JSON.stringify(currentPinned) !== JSON.stringify(nextPinned)) savePinnedLLMModels(nextPinned)
+        set({
+          llmCatalog: catalog,
+          selectedLLM: nextSelection,
+          pinnedLLMModels: nextPinned,
+          ...(selectionDisappeared
+            ? {
+              notification: {
+                text: nextSelection
+                  ? `${selected?.provider} · ${selected?.model} is no longer available. Switched to ${nextSelection.provider} · ${nextSelection.model}.`
+                  : `${selected?.provider} · ${selected?.model} is no longer available. Choose another model in Settings.`,
+                type: 'error' as const,
+              },
+            }
+            : {}),
+        })
+        return catalog
+      })
+      .finally(() => {
+        llmCatalogRefresh = null
+      })
+    return llmCatalogRefresh
+  },
+  startModelDownload: async (provider, model) => {
+    if (get().modelDownload?.status === 'downloading') return
+
+    const previousSelection = get().selectedLLM
+    set({
+      modelDownload: {
+        provider,
+        model,
+        previousSelection,
+        status: 'downloading',
+        progress: null,
+        error: '',
+      },
+    })
+
+    try {
+      await pullModel(model, progress => {
+        set(state => ({
+          modelDownload: state.modelDownload
+            ? { ...state.modelDownload, progress }
+            : state.modelDownload,
+        }))
+      })
+      const refreshed = await get().refreshLLMModels(true)
+      const installed = refreshed.providers
+        .find(item => item.provider === provider)
+        ?.models.some(item => item.name === model && item.installed === true)
+      if (!installed) throw new Error(`${model} completed downloading but is not listed as installed.`)
+
+      saveSelectedLLM({ provider, model })
+      set({
+        selectedLLM: { provider, model },
+        modelDownload: {
+          provider,
+          model,
+          previousSelection,
+          status: 'success',
+          progress: { status: 'success' },
+          error: '',
+        },
+        notification: { text: `${model} installed`, type: 'success' },
+      })
+      setTimeout(() => set({ notification: null }), 5000)
+      setTimeout(() => set(state => (
+        state.modelDownload?.model === model && state.modelDownload.status === 'success'
+          ? { modelDownload: null }
+          : state
+      )), 5000)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Model download failed.'
+      set({
+        modelDownload: {
+          provider,
+          model,
+          previousSelection,
+          status: 'error',
+          progress: null,
+          error: message,
+        },
+        notification: { text: message, type: 'error' },
+      })
+      setTimeout(() => set({ notification: null }), 7000)
+      setTimeout(() => set(state => (
+        state.modelDownload?.model === model && state.modelDownload.status === 'error'
+          ? { modelDownload: null }
+          : state
+      )), 7000)
+    }
+  },
+  clearNotification: () => set({ notification: null }),
 }))
