@@ -1,18 +1,16 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { CheckCircle2, Cpu, Globe, Loader2, Plus, Save, Trash2, User } from 'lucide-react'
+import { ModelSelector } from '../../components/ModelSelector'
+import { Button } from '../../components/ui/button'
 import {
-  Cpu,
-  Globe,
-  ChevronDown,
-  Loader2,
-  CheckCircle2,
-  User,
-  Plus,
-  Trash2,
-  Save,
-} from 'lucide-react'
-import { useStore } from '../../store'
-import { fetchModels, fetchProfile, saveProfile } from '../../lib/api'
+  describeLLMError,
+  fetchProfile,
+  saveProfile,
+  type LLMProviderName,
+} from '../../lib/api'
 import { cn } from '../../lib/utils'
+import { useStore } from '../../store'
+import { ProviderConfigModal } from './ProviderConfigModal'
 
 function SettingRow({
   label,
@@ -45,7 +43,7 @@ function SettingRow({
         </div>
         <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">{description}</p>
       </div>
-      <div className="flex-shrink-0">{children}</div>
+      <div className="w-full max-w-sm flex-shrink-0">{children}</div>
     </div>
   )
 }
@@ -74,11 +72,12 @@ interface ProfileState {
 }
 
 export function Settings() {
-  const selectedModel = useStore(s => s.selectedModel)
-  const setSelectedModel = useStore(s => s.setSelectedModel)
-  const [availableModels, setAvailableModels] = useState<string[]>([])
-  const [loadingModels, setLoadingModels] = useState(true)
-  const [modelSaved, setModelSaved] = useState(false)
+  const refreshLLMModels = useStore(state => state.refreshLLMModels)
+  const [providersOpen, setProvidersOpen] = useState(false)
+  const [initialProvider, setInitialProvider] = useState<LLMProviderName>('ollama')
+  const [catalogError, setCatalogError] = useState('')
+  const manageProvidersRef = useRef<HTMLButtonElement>(null)
+  const modalOpenerRef = useRef<HTMLElement | null>(null)
 
   const [profile, setProfile] = useState<ProfileState>({
     name: '',
@@ -94,15 +93,9 @@ export function Settings() {
   } | null>(null)
 
   useEffect(() => {
-    fetchModels()
-      .then(res => {
-        if (res?.models?.length) {
-          setAvailableModels(res.models)
-          if (!selectedModel) setSelectedModel(res.default || res.models[0])
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingModels(false))
+    refreshLLMModels()
+      .then(() => setCatalogError(''))
+      .catch(error => setCatalogError(describeLLMError(error)))
 
     fetchProfile()
       .then(data => {
@@ -125,55 +118,57 @@ export function Settings() {
         }
       })
       .catch(() => {
-        // Fall back to default empty profile state gracefully
+        // Keep the empty profile form available if no profile is configured yet.
       })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [refreshLLMModels])
 
-  const handleModelChange = (model: string) => {
-    setSelectedModel(model)
-    setModelSaved(true)
-    setTimeout(() => setModelSaved(false), 2000)
+  function openProviders(provider: LLMProviderName = 'ollama', trigger?: HTMLElement) {
+    modalOpenerRef.current = trigger || manageProvidersRef.current
+    setInitialProvider(provider)
+    setProvidersOpen(true)
+  }
+
+  function closeProviders() {
+    setProvidersOpen(false)
+    requestAnimationFrame(() => modalOpenerRef.current?.focus())
   }
 
   const handleAddCustomField = () => {
     setProfile(prev => ({
       ...prev,
-      customFields: [...(prev.customFields || []), { key: '', value: '' }],
+      customFields: [...prev.customFields, { key: '', value: '' }],
     }))
   }
 
-  const handleCustomFieldChange = (index: number, field: 'key' | 'value', val: string) => {
+  const handleCustomFieldChange = (index: number, field: 'key' | 'value', value: string) => {
     setProfile(prev => {
-      const updated = [...(prev.customFields || [])]
-      if (updated[index]) {
-        updated[index] = { ...updated[index], [field]: val }
+      const customFields = [...prev.customFields]
+      if (customFields[index]) {
+        customFields[index] = { ...customFields[index], [field]: value }
       }
-      return { ...prev, customFields: updated }
+      return { ...prev, customFields }
     })
   }
 
   const handleRemoveCustomField = (index: number) => {
     setProfile(prev => ({
       ...prev,
-      customFields: (prev.customFields || []).filter((_, i) => i !== index),
+      customFields: prev.customFields.filter((_, currentIndex) => currentIndex !== index),
     }))
   }
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSaveProfile = async (event: React.FormEvent) => {
+    event.preventDefault()
     setSavingProfile(true)
     setProfileFeedback(null)
 
     try {
       const custom_fields: Record<string, string> = {}
-      for (const item of profile.customFields || []) {
-        if (item.key.trim()) {
-          custom_fields[item.key.trim()] = item.value
-        }
+      for (const item of profile.customFields) {
+        if (item.key.trim()) custom_fields[item.key.trim()] = item.value
       }
 
-      const res = await saveProfile({
+      const result = await saveProfile({
         profile_id: profile.profile_id,
         name: profile.name,
         profession: profile.profession,
@@ -182,13 +177,13 @@ export function Settings() {
         custom_fields,
       })
 
-      if (res?.profile_id) {
-        setProfile(prev => ({ ...prev, profile_id: res.profile_id }))
+      if (result.profile_id) {
+        setProfile(prev => ({ ...prev, profile_id: result.profile_id }))
       }
       setProfileFeedback({ type: 'success', text: 'Profile saved successfully!' })
       setTimeout(() => setProfileFeedback(null), 4000)
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to save profile.'
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to save profile.'
       setProfileFeedback({ type: 'error', text: message })
     } finally {
       setSavingProfile(false)
@@ -198,7 +193,6 @@ export function Settings() {
   return (
     <div className="flex-1 overflow-auto bg-zinc-50 p-8">
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Page header */}
         <div className="mb-6">
           <h1 className="text-xl font-bold text-zinc-900 tracking-tight">Settings</h1>
           <p className="text-sm text-zinc-500 mt-1">
@@ -206,57 +200,36 @@ export function Settings() {
           </p>
         </div>
 
-        {/* ── AI Model ── */}
         <div>
-          <SectionHeader icon={Cpu} title="AI Model" />
+          <div className="flex items-center justify-between gap-3">
+            <SectionHeader icon={Cpu} title="AI Model" />
+            <Button
+              ref={manageProvidersRef}
+              type="button"
+              variant="outline"
+              className="mt-8"
+              onClick={event => openProviders('ollama', event.currentTarget)}
+            >
+              Configure providers
+            </Button>
+          </div>
           <div className="bg-white border border-zinc-200 rounded-xl px-5">
             <SettingRow
-              label="LLM model"
-              description="Local Ollama model used for AI form filling. Run ollama pull <model> to add more."
+              label="LLM provider and model"
+              description="Choose from the providers you have set up."
             >
-              {loadingModels ? (
-                <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Loading…
-                </div>
-              ) : availableModels.length === 0 ? (
-                <span className="text-xs text-red-500">No models — is Ollama running?</span>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <select
-                      value={selectedModel}
-                      onChange={e => handleModelChange(e.target.value)}
-                      className={cn(
-                        'appearance-none rounded-lg border border-zinc-200 bg-zinc-50',
-                        'pl-3 pr-8 py-1.5 text-sm font-mono text-zinc-800',
-                        'hover:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-violet-400 transition-colors cursor-pointer'
-                      )}
-                    >
-                      {availableModels.map(m => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-zinc-400 absolute right-2.5 top-2 pointer-events-none" />
-                  </div>
-                  <span
-                    className={cn(
-                      'flex items-center gap-1 text-xs font-medium text-emerald-600 transition-all duration-300',
-                      modelSaved ? 'opacity-100' : 'opacity-0'
-                    )}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Saved
-                  </span>
-                </div>
-              )}
+              <ModelSelector
+                onConfigure={(provider, trigger) => openProviders(provider, trigger)}
+              />
             </SettingRow>
+            {catalogError && (
+              <p className="pb-3 text-xs text-red-600" role="alert">
+                {catalogError}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* ── User Profile ── */}
         <div>
           <SectionHeader icon={User} title="User Profile" />
           <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
@@ -276,7 +249,9 @@ export function Settings() {
                     : 'bg-rose-50 text-rose-700 border-rose-200'
                 )}
               >
-                {profileFeedback.type === 'success' && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                {profileFeedback.type === 'success' && (
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                )}
                 <span>{profileFeedback.text}</span>
               </div>
             )}
@@ -290,7 +265,7 @@ export function Settings() {
                   <input
                     type="text"
                     value={profile.name}
-                    onChange={e => setProfile({ ...profile, name: e.target.value })}
+                    onChange={event => setProfile({ ...profile, name: event.target.value })}
                     placeholder="e.g. Jane Doe"
                     className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-colors"
                   />
@@ -303,7 +278,7 @@ export function Settings() {
                   <input
                     type="text"
                     value={profile.profession}
-                    onChange={e => setProfile({ ...profile, profession: e.target.value })}
+                    onChange={event => setProfile({ ...profile, profession: event.target.value })}
                     placeholder="e.g. Firefighting, Healthcare"
                     className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-colors"
                   />
@@ -317,7 +292,7 @@ export function Settings() {
                 <input
                   type="text"
                   value={profile.role}
-                  onChange={e => setProfile({ ...profile, role: e.target.value })}
+                  onChange={event => setProfile({ ...profile, role: event.target.value })}
                   placeholder="e.g. Battalion Chief, Paramedic"
                   className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-colors"
                 />
@@ -330,7 +305,7 @@ export function Settings() {
                 <textarea
                   rows={2}
                   value={profile.description}
-                  onChange={e => setProfile({ ...profile, description: e.target.value })}
+                  onChange={event => setProfile({ ...profile, description: event.target.value })}
                   placeholder="Brief context or unit info..."
                   className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-colors"
                 />
@@ -350,27 +325,31 @@ export function Settings() {
                   </button>
                 </div>
 
-                {(!profile.customFields || profile.customFields.length === 0) && (
+                {profile.customFields.length === 0 && (
                   <p className="text-xs text-zinc-400 italic py-2">
                     No custom fields added yet (e.g. badge_number, station_id).
                   </p>
                 )}
 
                 <div className="space-y-2">
-                  {(profile.customFields || []).map((field, index) => (
+                  {profile.customFields.map((field, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <input
                         type="text"
                         placeholder="Key (e.g. badge_number)"
                         value={field.key}
-                        onChange={e => handleCustomFieldChange(index, 'key', e.target.value)}
+                        onChange={event =>
+                          handleCustomFieldChange(index, 'key', event.target.value)
+                        }
                         className="flex-1 bg-white border border-zinc-200 rounded-lg px-3 py-1.5 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400"
                       />
                       <input
                         type="text"
                         placeholder="Value (e.g. 12345)"
                         value={field.value}
-                        onChange={e => handleCustomFieldChange(index, 'value', e.target.value)}
+                        onChange={event =>
+                          handleCustomFieldChange(index, 'value', event.target.value)
+                        }
                         className="flex-1 bg-white border border-zinc-200 rounded-lg px-3 py-1.5 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400"
                       />
                       <button
@@ -407,7 +386,6 @@ export function Settings() {
           </div>
         </div>
 
-        {/* ── Language & Region ── */}
         <div>
           <SectionHeader icon={Globe} title="Language & Region" />
           <div className="bg-white border border-zinc-200 rounded-xl px-5">
@@ -422,6 +400,9 @@ export function Settings() {
           </div>
         </div>
       </div>
+      {providersOpen && (
+        <ProviderConfigModal initialProvider={initialProvider} onClose={closeProviders} />
+      )}
     </div>
   )
 }
