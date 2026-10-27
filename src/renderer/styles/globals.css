@@ -184,19 +184,6 @@ body {
   animation: scanline-sweep 2.4s ease-in-out infinite;
 }
 
-@keyframes typewriter-cursor {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
-}
-
-.animate-cursor-blink {
-  animation: typewriter-cursor 0.75s infinite;
-}
-
 @keyframes pdf-crossfade-glow {
   0% {
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45);

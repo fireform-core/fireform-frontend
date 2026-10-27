@@ -4,7 +4,6 @@ import {
   ExternalLink,
   Eye,
   Upload,
-  Sparkles,
   Loader2,
   Layers,
 } from 'lucide-react'
@@ -18,6 +17,7 @@ interface DocumentViewerProps {
   template: Template | null
   fields: Array<{ name: string; type: string; key?: string }>
   pdfPath?: string | null
+  filledPdfPath?: string | null
   onFileSelect?: (file: File) => void
   isFilling?: boolean
   lastFillTime?: number
@@ -27,6 +27,7 @@ export function DocumentViewer({
   template,
   fields,
   pdfPath,
+  filledPdfPath = null,
   onFileSelect,
   isFilling = false,
   lastFillTime = 0,
@@ -41,28 +42,21 @@ export function DocumentViewer({
   const [displayMode, setDisplayMode] = useState<'filled' | 'blank'>('blank')
   const [isFadingInFilled, setIsFadingInFilled] = useState(false)
 
-  // Fill animation preference: toolbar toggle (persisted) + OS reduced-motion.
-  // When animations are off, a completed fill just shows the filled PDF at once.
-  const [animationsEnabled, setAnimationsEnabled] = useState<boolean>(() => {
+  // Fill animation preference lives in Settings (localStorage key
+  // 'ff-animations', read at fill time so a Settings change applies
+  // without a reload).
+  const [filledFadeReady, setFilledFadeReady] = useState(false)
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  const readAnimationsEnabled = () => {
     if (typeof window === 'undefined') return true
     try {
       return window.localStorage.getItem('ff-animations') !== 'off'
     } catch {
       return true
     }
-  })
-  const prefersReducedMotion =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-  const toggleAnimations = () => {
-    setAnimationsEnabled(prev => {
-      const next = !prev
-      try {
-        window.localStorage.setItem('ff-animations', next ? 'on' : 'off')
-      } catch {}
-      return next
-    })
   }
 
   const prevLastFillTimeRef = useRef<number>(0)
@@ -87,8 +81,14 @@ export function DocumentViewer({
       const url = await resolvePreviewUrl(path)
       if (url) {
         setFrameUrl(url)
-        // Check if this is a filled PDF
-        const isFilled = template?.pdf_path ? path.trim() !== template.pdf_path.trim() : path.includes('filled')
+        // A path counts as filled only if it is the actual filled output
+        // Studio recorded — never merely "anything that isn't the template".
+        // (Uploading a blank PDF used to be misread as a filled one.)
+        const isFilled = filledPdfPath
+          ? path.trim() === filledPdfPath.trim()
+          : template?.pdf_path
+            ? path.trim() !== template.pdf_path.trim()
+            : path.includes('filled')
         if (isFilled) {
           setFilledUrl(url)
           setDisplayMode('filled')
@@ -121,16 +121,25 @@ export function DocumentViewer({
   }, [pdfPath])
 
   // On a successful fill, fade the filled PDF in with the glow — unless
-  // animations are off or the OS asks for reduced motion, in which case
-  // the filled PDF just appears at once (reduced-motion covers the JS
-  // parts too, not only the CSS).
+  // animations are off (Settings) or the OS asks for reduced motion, in
+  // which case the filled PDF just appears at once (reduced-motion covers
+  // the JS parts too, not only the CSS).
+  // The fade needs two frames: the filled layer must first paint at
+  // opacity 0, otherwise it mounts already visible and no crossfade plays.
   useEffect(() => {
     if (lastFillTime > 0 && lastFillTime !== prevLastFillTimeRef.current) {
       prevLastFillTimeRef.current = lastFillTime
       setDisplayMode('filled')
-      setIsFadingInFilled(animationsEnabled && !prefersReducedMotion)
+      const animate = readAnimationsEnabled() && !prefersReducedMotion
+      setIsFadingInFilled(animate)
+      if (animate) {
+        setFilledFadeReady(false)
+        requestAnimationFrame(() => requestAnimationFrame(() => setFilledFadeReady(true)))
+      } else {
+        setFilledFadeReady(true)
+      }
     }
-  }, [lastFillTime, animationsEnabled, prefersReducedMotion])
+  }, [lastFillTime, prefersReducedMotion])
 
 
 
@@ -174,13 +183,6 @@ export function DocumentViewer({
             {totalFields} {totalFields === 1 ? 'field' : 'fields'}
           </Badge>
 
-          {/* Only after a successful fill — never on a blank PDF */}
-          {isFilledAvailable && lastFillTime > 0 && (
-            <Badge className="text-[10px] bg-emerald-50 text-emerald-800 border-emerald-200 flex items-center gap-1">
-              <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
-              <span>Filled PDF Active</span>
-            </Badge>
-          )}
         </div>
 
         {/* Action Controls */}
@@ -198,18 +200,6 @@ export function DocumentViewer({
               {displayMode === 'filled' ? 'Compare Blank' : 'Show Filled'}
             </Button>
           )}
-
-          {/* Fill animation on/off (persisted) */}
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={toggleAnimations}
-            className="text-zinc-700 hover:text-zinc-900 bg-white text-[11px] h-7 border-zinc-200"
-            title={animationsEnabled ? 'Turn fill animations off' : 'Turn fill animations on'}
-          >
-            <Sparkles className="w-3 h-3 mr-1 text-zinc-500" />
-            {animationsEnabled ? 'Animations On' : 'Animations Off'}
-          </Button>
 
 
 
@@ -235,6 +225,11 @@ export function DocumentViewer({
               'relative w-full h-full bg-white rounded-md shadow-sm border border-zinc-300 overflow-hidden transition-all duration-700',
               isFadingInFilled && 'animate-fill-glow ring-2 ring-emerald-500/50'
             )}
+            onAnimationEnd={e => {
+              // The glow runs once; clear the flag when it ends so the
+              // green ring doesn't stick around and the next fill replays it.
+              if (e.target === e.currentTarget) setIsFadingInFilled(false)
+            }}
           >
             {/* If a filled version is available, support crossfade between blank and filled */}
             {isFilledAvailable ? (
@@ -262,7 +257,7 @@ export function DocumentViewer({
                     src={withPdfViewerParams(filledUrl)}
                     className={cn(
                       'absolute inset-0 w-full h-full border-0 bg-white transition-opacity duration-1000',
-                      displayMode === 'filled'
+                      displayMode === 'filled' && filledFadeReady
                         ? 'opacity-100 z-20 pointer-events-auto'
                         : 'opacity-0 pointer-events-none z-0'
                     )}

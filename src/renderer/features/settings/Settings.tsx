@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Cpu, Globe, ChevronDown, Loader2, CheckCircle2 } from 'lucide-react'
+import { Cpu, Globe, ChevronDown, Loader2, CheckCircle2, Sparkles } from 'lucide-react'
 import { useStore } from '../../store'
 import { fetchModels } from '../../lib/api'
 import { cn } from '../../lib/utils'
@@ -75,6 +75,21 @@ export function Settings() {
     setTimeout(() => setSaved(false), 2000)
   }
 
+  const [animationsEnabled, setAnimationsEnabled] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem('ff-animations') !== 'off'
+    } catch {
+      return true
+    }
+  })
+
+  const handleAnimationsChange = (next: boolean) => {
+    setAnimationsEnabled(next)
+    try {
+      window.localStorage.setItem('ff-animations', next ? 'on' : 'off')
+    } catch {}
+  }
+
   return (
     <div className="flex-1 overflow-auto bg-zinc-50 p-8">
       <div className="max-w-xl mx-auto">
@@ -143,6 +158,27 @@ export function Settings() {
             <span className="text-sm text-zinc-300 font-medium">English (EN)</span>
           </SettingRow>
 
+        </div>
+
+        {/* ── Display ── */}
+        <SectionHeader icon={Sparkles} title="Display" />
+        <div className="bg-white border border-zinc-200 rounded-xl px-5">
+          <SettingRow
+            label="Fill animations"
+            description="Fade and glow transition when a filled PDF appears in Studio. Turn off for an instant result."
+          >
+            <button
+              onClick={() => handleAnimationsChange(!animationsEnabled)}
+              className={cn(
+                'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer',
+                animationsEnabled
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-zinc-200 bg-zinc-50 text-zinc-500'
+              )}
+            >
+              {animationsEnabled ? 'On' : 'Off'}
+            </button>
+          </SettingRow>
         </div>
 
       </div>
