@@ -1,14 +1,12 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   FileText,
   ExternalLink,
   Eye,
   Upload,
   Sparkles,
-  Check,
   Loader2,
   Layers,
-  FastForward,
 } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
@@ -23,26 +21,6 @@ interface DocumentViewerProps {
   onFileSelect?: (file: File) => void
   isFilling?: boolean
   lastFillTime?: number
-}
-
-function getFieldSampleValue(fieldName: string, index: number): string {
-  const name = fieldName.toLowerCase()
-  if (name.includes('date')) return new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-  if (name.includes('time')) return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-  if (name.includes('loc') || name.includes('address') || name.includes('street')) return '452 West End Ave, Structure Fire'
-  if (name.includes('city') || name.includes('municipality')) return 'Metropolis'
-  if (name.includes('state')) return 'CA'
-  if (name.includes('zip') || name.includes('postal')) return '90210'
-  if (name.includes('num') || name.includes('id') || name.includes('code')) return `INC-2026-0849${index + 1}`
-  if (name.includes('unit') || name.includes('engine') || name.includes('truck')) return 'Engine 1, Ladder 3, Rescue 2'
-  if (name.includes('officer') || name.includes('name') || name.includes('commander')) return 'Capt. M. Santiago'
-  if (name.includes('temp') || name.includes('weather')) return '68°F, Clear, Wind 8mph NW'
-  if (name.includes('narrative') || name.includes('desc') || name.includes('summary') || name.includes('notes')) {
-    return 'Primary search all clear; fire knocked down within 20 mins.'
-  }
-  if (name.includes('casualty') || name.includes('injury')) return '0 civilian injuries, 0 firefighter injuries'
-  if (name.includes('action') || name.includes('status')) return 'Extinguished, Under Investigation'
-  return `Populated: ${fieldName}`
 }
 
 export function DocumentViewer({
@@ -61,32 +39,36 @@ export function DocumentViewer({
 
   // Transition & Animation state
   const [displayMode, setDisplayMode] = useState<'filled' | 'blank'>('blank')
-  const [isAnimatingFill, setIsAnimatingFill] = useState(false)
   const [isFadingInFilled, setIsFadingInFilled] = useState(false)
-  const [animFieldIndex, setAnimFieldIndex] = useState(0)
-  const [animTypedText, setAnimTypedText] = useState('')
-  const [completedFields, setCompletedFields] = useState<Set<number>>(new Set())
-  const [fillProgress, setFillProgress] = useState(0)
+
+  // Fill animation preference: toolbar toggle (persisted) + OS reduced-motion.
+  // When animations are off, a completed fill just shows the filled PDF at once.
+  const [animationsEnabled, setAnimationsEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true
+    try {
+      return window.localStorage.getItem('ff-animations') !== 'off'
+    } catch {
+      return true
+    }
+  })
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  const toggleAnimations = () => {
+    setAnimationsEnabled(prev => {
+      const next = !prev
+      try {
+        window.localStorage.setItem('ff-animations', next ? 'on' : 'off')
+      } catch {}
+      return next
+    })
+  }
 
   const prevLastFillTimeRef = useRef<number>(0)
 
   const templateName = template?.name || (pdfPath ? pdfPath.split('/').pop() : 'Document Preview')
   const totalFields = fields.length
-
-  // Fields to animate during typewriter phase (capped at 6 for snappy 5-second experience)
-  const animFields = useMemo(() => {
-    if (fields && fields.length > 0) {
-      return fields.slice(0, 6)
-    }
-    return [
-      { name: 'Incident Date', type: 'date' },
-      { name: 'Incident Type', type: 'string' },
-      { name: 'Location / Address', type: 'string' },
-      { name: 'Responding Units', type: 'string' },
-      { name: 'Commanding Officer', type: 'string' },
-      { name: 'Narrative Summary', type: 'text' },
-    ]
-  }, [fields])
 
   // Resolve blank template URL
   useEffect(() => {
@@ -138,98 +120,19 @@ export function DocumentViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfPath])
 
-  // Trigger Fill Animation
-  const startFillAnimation = useCallback(() => {
-    setIsAnimatingFill(true)
-    setDisplayMode('filled')
-    setIsFadingInFilled(false)
-    setAnimFieldIndex(0)
-    setAnimTypedText('')
-    setCompletedFields(new Set())
-    setFillProgress(5)
-  }, [])
-
-  const skipAnimation = useCallback(() => {
-    setCompletedFields(new Set(animFields.map((_, i) => i)))
-    setFillProgress(100)
-    setIsFadingInFilled(true)
-    setIsAnimatingFill(false)
-  }, [animFields])
-
-  // Automatically start animation when a new fill completes
+  // On a successful fill, fade the filled PDF in with the glow — unless
+  // animations are off or the OS asks for reduced motion, in which case
+  // the filled PDF just appears at once (reduced-motion covers the JS
+  // parts too, not only the CSS).
   useEffect(() => {
     if (lastFillTime > 0 && lastFillTime !== prevLastFillTimeRef.current) {
       prevLastFillTimeRef.current = lastFillTime
-      startFillAnimation()
+      setDisplayMode('filled')
+      setIsFadingInFilled(animationsEnabled && !prefersReducedMotion)
     }
-  }, [lastFillTime, startFillAnimation])
+  }, [lastFillTime, animationsEnabled, prefersReducedMotion])
 
-  // Typewriter Loop
-  useEffect(() => {
-    if (!isAnimatingFill) return
 
-    let isCancelled = false
-    const currentField = animFields[animFieldIndex]
-    if (!currentField) {
-      const t = setTimeout(() => {
-        if (!isCancelled) {
-          setIsFadingInFilled(true)
-          setFillProgress(100)
-          setIsAnimatingFill(false)
-        }
-      }, 50)
-      return () => {
-        isCancelled = true
-        clearTimeout(t)
-      }
-    }
-
-    const fullValue = getFieldSampleValue(currentField.name, animFieldIndex)
-    let charIdx = 0
-
-    const typingInterval = setInterval(() => {
-      if (isCancelled) return
-      charIdx++
-      setAnimTypedText(fullValue.slice(0, charIdx))
-
-      if (charIdx >= fullValue.length) {
-        clearInterval(typingInterval)
-
-        // Field completed
-        setCompletedFields(prev => new Set(prev).add(animFieldIndex))
-        const newProgress = Math.round(((animFieldIndex + 1) / animFields.length) * 100)
-        setFillProgress(newProgress)
-
-        // Crossfade into filled PDF when reaching ~65% completion
-        if (newProgress >= 65) {
-          setIsFadingInFilled(true)
-        }
-
-        // Pause briefly before moving to next field
-        const delayTimeout = setTimeout(() => {
-          if (isCancelled) return
-          if (animFieldIndex + 1 < animFields.length) {
-            setAnimFieldIndex(prev => prev + 1)
-            setAnimTypedText('')
-          } else {
-            // All done!
-            setIsFadingInFilled(true)
-            setFillProgress(100)
-            setTimeout(() => {
-              if (!isCancelled) setIsAnimatingFill(false)
-            }, 1200)
-          }
-        }, 240)
-
-        return () => clearTimeout(delayTimeout)
-      }
-    }, 28) // 28ms per character for snappy typing
-
-    return () => {
-      isCancelled = true
-      clearInterval(typingInterval)
-    }
-  }, [isAnimatingFill, animFieldIndex, animFields])
 
   const handleLocalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -251,7 +154,6 @@ export function DocumentViewer({
   }
 
   const isFilledAvailable = Boolean(filledUrl && filledUrl !== blankUrl)
-  const currentActiveField = animFields[animFieldIndex]
 
   return (
     <div className="flex-1 flex flex-col h-full bg-zinc-100 overflow-hidden border-r border-zinc-200 font-sans">
@@ -261,13 +163,19 @@ export function DocumentViewer({
           <div className="flex items-center gap-1.5 font-semibold text-xs text-zinc-900 truncate">
             <FileText className="w-4 h-4 text-zinc-700 flex-shrink-0" />
             <span className="truncate">{templateName}</span>
+            {pdfPath && (
+              <span className="truncate text-[11px] text-zinc-400 font-normal" title={pdfPath}>
+                {pdfPath}
+              </span>
+            )}
           </div>
 
           <Badge variant="outline" className="text-[10px] bg-zinc-50 border-zinc-200 font-mono text-zinc-600">
             {totalFields} {totalFields === 1 ? 'field' : 'fields'}
           </Badge>
 
-          {isFilledAvailable && (
+          {/* Only after a successful fill — never on a blank PDF */}
+          {isFilledAvailable && lastFillTime > 0 && (
             <Badge className="text-[10px] bg-emerald-50 text-emerald-800 border-emerald-200 flex items-center gap-1">
               <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
               <span>Filled PDF Active</span>
@@ -290,6 +198,18 @@ export function DocumentViewer({
               {displayMode === 'filled' ? 'Compare Blank' : 'Show Filled'}
             </Button>
           )}
+
+          {/* Fill animation on/off (persisted) */}
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={toggleAnimations}
+            className="text-zinc-700 hover:text-zinc-900 bg-white text-[11px] h-7 border-zinc-200"
+            title={animationsEnabled ? 'Turn fill animations off' : 'Turn fill animations on'}
+          >
+            <Sparkles className="w-3 h-3 mr-1 text-zinc-500" />
+            {animationsEnabled ? 'Animations On' : 'Animations Off'}
+          </Button>
 
 
 
@@ -327,7 +247,7 @@ export function DocumentViewer({
                     src={withPdfViewerParams(blankUrl)}
                     className={cn(
                       'absolute inset-0 w-full h-full border-0 bg-white transition-opacity duration-1000',
-                      displayMode === 'blank' || (isAnimatingFill && !isFadingInFilled)
+                      displayMode === 'blank'
                         ? 'opacity-100 z-10 pointer-events-auto'
                         : 'opacity-0 pointer-events-none z-0'
                     )}
@@ -342,7 +262,7 @@ export function DocumentViewer({
                     src={withPdfViewerParams(filledUrl)}
                     className={cn(
                       'absolute inset-0 w-full h-full border-0 bg-white transition-opacity duration-1000',
-                      displayMode === 'filled' && (!isAnimatingFill || isFadingInFilled)
+                      displayMode === 'filled'
                         ? 'opacity-100 z-20 pointer-events-auto'
                         : 'opacity-0 pointer-events-none z-0'
                     )}
@@ -359,20 +279,13 @@ export function DocumentViewer({
               />
             )}
 
-            {/* Laser Scanline Beam sweeping across PDF during fill */}
-            {(isAnimatingFill || isFilling) && (
-              <div
-                className={cn(
-                  'absolute inset-x-0 h-1 pointer-events-none z-30 animate-scanline',
-                  isAnimatingFill
-                    ? 'bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_20px_#10b981]'
-                    : 'bg-gradient-to-r from-transparent via-blue-500 to-transparent shadow-[0_0_20px_#3b82f6]'
-                )}
-              />
+            {/* Laser Scanline Beam sweeping across PDF while the backend fills */}
+            {isFilling && (
+              <div className="absolute inset-x-0 h-1 pointer-events-none z-30 animate-scanline bg-gradient-to-r from-transparent via-blue-500 to-transparent shadow-[0_0_20px_#3b82f6]" />
             )}
 
             {/* While Backend LLM is executing - floating capsule, doesn't blur or hide document */}
-            {isFilling && !isAnimatingFill && (
+            {isFilling && (
               <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none transition-all">
                 <div className="bg-zinc-950/90 text-white backdrop-blur-md px-4 py-2.5 rounded-xl shadow-2xl border border-zinc-800 flex items-center gap-3">
                   <Loader2 className="w-4 h-4 text-emerald-400 animate-spin flex-shrink-0" />
@@ -384,85 +297,7 @@ export function DocumentViewer({
               </div>
             )}
 
-            {/* Field-by-Field Typewriter Animation Overlay */}
-            {isAnimatingFill && (
-              <div className="absolute inset-x-4 top-4 z-30 pointer-events-auto">
-                <div className="bg-white/95 backdrop-blur-md p-3.5 rounded-xl shadow-2xl border border-zinc-200/90 max-w-lg mx-auto">
-                  {/* Overlay Header */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                        <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-zinc-900">
-                          Populating Document Fields ({animFieldIndex + 1} of {animFields.length})
-                        </span>
-                        <span className="text-[10px] text-zinc-500 block">
-                          {fillProgress >= 65 ? 'Dissolving blank template into filled PDF...' : 'Mapping data into PDF schema...'}
-                        </span>
-                      </div>
-                    </div>
 
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      onClick={skipAnimation}
-                      className="text-[11px] h-6 px-2 text-zinc-500 hover:text-zinc-900"
-                    >
-                      <FastForward className="w-3 h-3 mr-1" />
-                      Skip
-                    </Button>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="w-full bg-zinc-100 h-1.5 rounded-full overflow-hidden mt-2.5">
-                    <div
-                      className="bg-emerald-500 h-full transition-all duration-300 rounded-full"
-                      style={{ width: `${fillProgress}%` }}
-                    />
-                  </div>
-
-                  {/* Active Field Typewriter Box */}
-                  {currentActiveField && (
-                    <div className="mt-3 p-2.5 bg-zinc-950 text-white rounded-lg text-xs font-mono shadow-inner border border-zinc-800">
-                      <div className="flex items-center justify-between text-[10px] text-zinc-400 font-sans uppercase font-bold tracking-wider mb-1">
-                        <span>
-                          Target: <span className="text-emerald-400">{currentActiveField.name}</span>
-                        </span>
-                        <span className="text-[9px] font-mono text-zinc-500 lowercase">{currentActiveField.type}</span>
-                      </div>
-                      <div className="flex items-center text-xs">
-                        <span className="text-zinc-100">{animTypedText}</span>
-                        <span className="inline-block w-1.5 h-3.5 bg-emerald-400 ml-0.5 animate-cursor-blink" />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Completed Fields Pill Tags */}
-                  <div className="flex flex-wrap gap-1.5 mt-2.5 max-h-24 overflow-y-auto">
-                    {animFields.slice(0, animFieldIndex + 1).map((f, i) => (
-                      <span
-                        key={f.name}
-                        className={cn(
-                          'inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium transition-all duration-300',
-                          completedFields.has(i)
-                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                            : 'bg-zinc-100 text-zinc-600 border border-zinc-200 animate-pulse'
-                        )}
-                      >
-                        {completedFields.has(i) ? (
-                          <Check className="w-2.5 h-2.5 text-emerald-600" />
-                        ) : (
-                          <Loader2 className="w-2.5 h-2.5 animate-spin text-zinc-500" />
-                        )}
-                        {f.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         ) : (
           <div className="text-center p-8 max-w-sm space-y-3 bg-white border border-dashed border-zinc-300 rounded-lg shadow-xs">
