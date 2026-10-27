@@ -183,7 +183,7 @@ export interface LLMProviderModels {
   downloadable?: DownloadableModelInfo[]
 }
 
-export type LLMProviderName = 'ollama' | 'gemini' | 'openai' | 'anthropic' | 'custom'
+export type LLMProviderName = 'ollama' | 'gemini' | 'openai' | 'anthropic' | 'custom' | 'llama_cpp'
 
 export interface LLMModelsResponse {
   default: LLMModelChoice
