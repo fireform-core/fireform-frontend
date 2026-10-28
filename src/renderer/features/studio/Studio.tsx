@@ -129,6 +129,7 @@ export function Studio() {
       setTemplateName(activeTemplate.name)
 
       setUploadedPdfPath(activeTemplate.pdf_path)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFilledOutputPath(null)
 
       // Seed fields from active template

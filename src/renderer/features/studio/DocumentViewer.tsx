@@ -133,6 +133,7 @@ export function DocumentViewer({
       const animate = readAnimationsEnabled() && !prefersReducedMotion
       setIsFadingInFilled(animate)
       if (animate) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setFilledFadeReady(false)
         requestAnimationFrame(() => requestAnimationFrame(() => setFilledFadeReady(true)))
       } else {
