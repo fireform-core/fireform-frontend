@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { CheckCircle2, Cpu, Globe, Loader2, Plus, Save, Trash2, User } from 'lucide-react'
+import { CheckCircle2, Cpu, Globe, Loader2, Plus, Save, Sparkles, Trash2, User } from 'lucide-react'
 import { ModelSelector } from '../../components/ModelSelector'
 import { Button } from '../../components/ui/button'
 import {
@@ -92,6 +92,20 @@ export function Settings() {
     text: string
   } | null>(null)
 
+  const [animationsEnabled, setAnimationsEnabled] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem('ff-animations') !== 'off'
+    } catch {
+      return true
+    }
+  })
+
+  const handleAnimationsChange = (next: boolean) => {
+    setAnimationsEnabled(next)
+    try {
+      window.localStorage.setItem('ff-animations', next ? 'on' : 'off')
+    } catch {}
+  }
   useEffect(() => {
     refreshLLMModels()
       .then(() => setCatalogError(''))
@@ -396,6 +410,28 @@ export function Settings() {
               badge="Coming soon"
             >
               <span className="text-sm text-zinc-400 font-medium">English (EN)</span>
+            </SettingRow>
+          </div>
+        </div>
+
+        <div>
+          <SectionHeader icon={Sparkles} title="Display" />
+          <div className="bg-white border border-zinc-200 rounded-xl px-5">
+            <SettingRow
+              label="Fill animations"
+              description="Fade and glow transition when a filled PDF appears in Studio. Turn off for an instant result."
+            >
+              <button
+                onClick={() => handleAnimationsChange(!animationsEnabled)}
+                className={cn(
+                  'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer',
+                  animationsEnabled
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-zinc-200 bg-zinc-50 text-zinc-500'
+                )}
+              >
+                {animationsEnabled ? 'On' : 'Off'}
+              </button>
             </SettingRow>
           </div>
         </div>

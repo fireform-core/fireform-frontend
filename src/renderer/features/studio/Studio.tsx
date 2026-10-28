@@ -65,6 +65,11 @@ export function Studio() {
   const [isMakeFillableLoading, setIsMakeFillableLoading] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
   const [isFilling, setIsFilling] = useState(false)
+  const [lastFillTime, setLastFillTime] = useState<number>(0)
+  // The actual filled output path from the last successful fill — the only
+  // path the viewer treats as "filled". (uploadedPdfPath is overloaded:
+  // template path, upload path and fill output all flow through it.)
+  const [filledOutputPath, setFilledOutputPath] = useState<string | null>(null)
   const [isWeatherOpen, setIsWeatherOpen] = useState(false)
   const [isZipcodeOpen, setIsZipcodeOpen] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'info' | 'success' | 'error' } | null>(null)
@@ -124,6 +129,7 @@ export function Studio() {
       setTemplateName(activeTemplate.name)
 
       setUploadedPdfPath(activeTemplate.pdf_path)
+      setFilledOutputPath(null)
 
       // Seed fields from active template
       const fieldsObj = activeTemplate.fields || {}
@@ -145,6 +151,7 @@ export function Studio() {
       // Switched to "New Template": clear the previous template's data
       setTemplateName('')
       setUploadedPdfPath(null)
+      setFilledOutputPath(null)
       resetRows()
       setSelectedFile(null)
       setDraft({ fieldsEdited: false, pdfChanged: false, descriptionEdited: false, seededTemplateId: null })
@@ -170,6 +177,7 @@ export function Studio() {
       const res: any = await uploadTemplatePdf(file, DEFAULT_TEMPLATE_DIRECTORY)
       const path = typeof res?.pdf_path === 'string' ? res.pdf_path : ''
       setUploadedPdfPath(path)
+      setFilledOutputPath(null)
       setDraft({ pdfChanged: true })
       // Seed the field list from the fillable fields the backend extracted
       const fields = Array.isArray(res?.fields) ? res.fields : []
@@ -213,6 +221,7 @@ export function Studio() {
       const res: any = await makeFillable(path)
       const count = typeof res?.field_count === 'number' ? res.field_count : null
       setUploadedPdfPath(typeof res?.pdf_path === 'string' && res.pdf_path ? res.pdf_path : path)
+      setFilledOutputPath(null)
       // If the user manually edited fields, confirm before discarding them
       if (draft.fieldsEdited) {
         const ok = window.confirm(
@@ -369,7 +378,9 @@ export function Studio() {
       if (outPath) {
         setPreviewPath(outPath)
         setUploadedPdfPath(outPath)
+        setFilledOutputPath(outPath)
         saveLastOutputPath(outPath)
+        setLastFillTime(Date.now())
         useStore.getState().markNarrativeFilled()
         setStatusMessage({ text: 'Document filled and PDF created!', type: 'success' })
       }
@@ -385,13 +396,15 @@ export function Studio() {
       {/* Status banner if active */}
       {statusMessage && (
         <div
-          className={`px-4 py-1.5 text-xs font-medium flex items-center justify-between transition-all ${
+          key={`${statusMessage.type}-${statusMessage.text}`}
+          className={`status px-4 py-1.5 text-xs font-medium flex items-center justify-between transition-all ${
             statusMessage.type === 'error'
               ? 'bg-red-600 text-white'
               : statusMessage.type === 'success'
               ? 'bg-emerald-600 text-white'
               : 'bg-zinc-900 text-white'
           }`}
+          aria-live="polite"
         >
           <span>{statusMessage.text}</span>
           <button
@@ -412,6 +425,9 @@ export function Studio() {
           fields={fieldRows}
           pdfPath={uploadedPdfPath || activeTemplate?.pdf_path}
           onFileSelect={handleFileSelect}
+          isFilling={isFilling}
+          lastFillTime={lastFillTime}
+          filledPdfPath={filledOutputPath}
         />
 
         {/* Right Pane (1/3 width): Studio Sidebar */}
