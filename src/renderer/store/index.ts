@@ -24,14 +24,14 @@ export interface ModelDownloadState {
   provider: string
   model: string
   previousSelection: LLMModelChoice | null
-  status: 'downloading' | 'success' | 'error'
+  status: 'downloading' | 'success' | 'error' | 'cancelled'
   progress: ModelProgress | null
   error: string
 }
 
 export interface AppNotification {
   text: string
-  type: 'success' | 'error'
+  type: 'success' | 'error' | 'info'
 }
 
 // Unsaved Studio Builder draft. Memory only (never localStorage) so it survives tab switches.
@@ -82,6 +82,7 @@ interface AppStore {
   llmCatalog: LLMModelsResponse | null
   pinnedLLMModels: PinnedLLMModels
   modelDownload: ModelDownloadState | null
+  modelDownloadController: AbortController | null
   notification: AppNotification | null
 
   setTemplates: (templates: Template[]) => void
@@ -102,6 +103,8 @@ interface AppStore {
   setPinnedLLMModels: (provider: LLMProviderName, models: string[]) => void
   refreshLLMModels: (afterCurrent?: boolean) => Promise<LLMModelsResponse>
   startModelDownload: (provider: string, model: string) => Promise<void>
+  cancelModelDownload: () => Promise<void>
+  notify: (notification: AppNotification) => void
   clearNotification: () => void
 }
 
@@ -133,6 +136,7 @@ export const useStore = create<AppStore>((set, get) => ({
   llmCatalog: null,
   pinnedLLMModels: loadPinnedLLMModels(),
   modelDownload: null,
+  modelDownloadController: null,
   notification: null,
 
   setTemplates: (templates) => {
@@ -285,7 +289,9 @@ export const useStore = create<AppStore>((set, get) => ({
     if (get().modelDownload?.status === 'downloading') return
 
     const previousSelection = get().selectedLLM
+    const controller = new AbortController()
     set({
+      modelDownloadController: controller,
       modelDownload: {
         provider,
         model,
@@ -303,7 +309,9 @@ export const useStore = create<AppStore>((set, get) => ({
             ? { ...state.modelDownload, progress }
             : state.modelDownload,
         }))
-      })
+      }, controller.signal)
+      if (get().modelDownloadController !== controller) return
+      set({ modelDownloadController: null })
       const refreshed = await get().refreshLLMModels(true)
       const installed = refreshed.providers
         .find(item => item.provider === provider)
@@ -321,6 +329,7 @@ export const useStore = create<AppStore>((set, get) => ({
           progress: { status: 'success' },
           error: '',
         },
+        modelDownloadController: null,
         notification: { text: `${model} installed`, type: 'success' },
       })
       setTimeout(() => set({ notification: null }), 5000)
@@ -330,8 +339,28 @@ export const useStore = create<AppStore>((set, get) => ({
           : state
       )), 5000)
     } catch (error) {
+      if (controller.signal.aborted) {
+        const current = get().modelDownload
+        if (current?.status === 'downloading' && get().modelDownloadController === controller) {
+          set({
+            modelDownloadController: null,
+            modelDownload: { ...current, status: 'cancelled', progress: null, error: '' },
+          })
+          try {
+            await get().refreshLLMModels(true)
+          } catch (refreshError) {
+            const detail = refreshError instanceof Error ? refreshError.message : 'Unknown error.'
+            get().notify({
+              text: `Download cancelled. The model list could not be refreshed: ${detail}`,
+              type: 'info',
+            })
+          }
+        }
+        return
+      }
       const message = error instanceof Error ? error.message : 'Model download failed.'
       set({
+        modelDownloadController: null,
         modelDownload: {
           provider,
           model,
@@ -349,6 +378,33 @@ export const useStore = create<AppStore>((set, get) => ({
           : state
       )), 7000)
     }
+  },
+  cancelModelDownload: async () => {
+    const current = get().modelDownload
+    const controller = get().modelDownloadController
+    if (current?.status !== 'downloading' || !controller) return
+
+    set({
+      modelDownloadController: null,
+      modelDownload: { ...current, status: 'cancelled', progress: null, error: '' },
+    })
+    controller.abort()
+    get().notify({ text: 'Download cancelled', type: 'info' })
+    try {
+      await get().refreshLLMModels(true)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Unknown error.'
+      get().notify({
+        text: `Download cancelled. The model list could not be refreshed: ${detail}`,
+        type: 'info',
+      })
+    }
+  },
+  notify: notification => {
+    set({ notification })
+    setTimeout(() => set(state => (
+      state.notification === notification ? { notification: null } : state
+    )), 5000)
   },
   clearNotification: () => set({ notification: null }),
 }))
