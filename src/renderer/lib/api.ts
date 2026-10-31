@@ -285,6 +285,17 @@ export async function fetchLLMModels(refresh = false): Promise<LLMModelsResponse
   return body as LLMModelsResponse
 }
 
+export async function deleteOllamaModel(model: string): Promise<{ model: string; deleted: true }> {
+  const response = await fetch(`${API_BASE_URL}/system/llm/models`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, provider: 'ollama' }),
+  })
+  const body = await parseJsonResponse(response)
+  if (!response.ok) throw llmApiError(body, response.status)
+  return body as { model: string; deleted: true }
+}
+
 export async function fetchLLMProviderConfigs(): Promise<LLMProviderConfig[]> {
   const response = await fetch(`${API_BASE_URL}/system/llm/providers/config`)
   const body = await parseJsonResponse(response)
@@ -377,12 +388,14 @@ export async function setLLMExternalConsent(allowExternal: boolean): Promise<LLM
 
 export async function pullModel(
   model: string,
-  onProgress: (progress: ModelProgress) => void
+  onProgress: (progress: ModelProgress) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/system/llm/pull`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider: 'ollama', model }),
+    signal,
   })
   if (!response.ok) {
     const body = await parseJsonResponse(response)

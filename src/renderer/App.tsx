@@ -31,16 +31,20 @@ export function App() {
     setTemplates,
     templates,
     modelDownload,
+    modelDownloadController,
     notification,
     startModelDownload,
+    cancelModelDownload,
   } = useStore(s => ({
     activeTab: s.activeTab,
     setActiveTab: s.setActiveTab,
     setTemplates: s.setTemplates,
     templates: s.templates,
     modelDownload: s.modelDownload,
+    modelDownloadController: s.modelDownloadController,
     notification: s.notification,
     startModelDownload: s.startModelDownload,
+    cancelModelDownload: s.cancelModelDownload,
   }))
 
   const [ready, setReady] = useState(false)
@@ -169,7 +173,7 @@ export function App() {
           </div>
         </div>
       </header>
-      {modelDownload && (
+      {modelDownload && modelDownload.status !== 'cancelled' && (
         <div
           className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-zinc-200 bg-white p-3 shadow-xl"
           role="status"
@@ -189,6 +193,18 @@ export function App() {
                     : modelDownload.error}
               </p>
             </div>
+            {modelDownload.status === 'downloading' && modelDownloadController && (
+              <button
+                type="button"
+                className="shrink-0 rounded-md border border-zinc-200 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-50"
+                onClick={event => {
+                  event.stopPropagation()
+                  void cancelModelDownload()
+                }}
+              >
+                Cancel
+              </button>
+            )}
           </div>
           {modelDownload.status === 'downloading' && (
             <>
