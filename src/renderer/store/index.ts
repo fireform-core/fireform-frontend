@@ -7,6 +7,7 @@ import {
   type LLMModelsResponse,
   type LLMProviderName,
   type ModelProgress,
+  type ReportFormat,
 } from '../lib/api'
 import { isUsable, reconcileChoice } from '../lib/llmModels'
 import {
@@ -32,6 +33,17 @@ export interface ModelDownloadState {
 export interface AppNotification {
   text: string
   type: 'success' | 'error'
+}
+
+// Report job requested from the Reports tab. Memory only, so leaving the tab and coming
+// back resumes polling GET /reports/{id} instead of losing the job.
+export interface ActiveReport {
+  reportId: string
+  format: ReportFormat
+  periodLabel: string
+  // Used to name the downloaded file, e.g. "FireForm_Quarterly_2026-Q3"
+  fileStem: string
+  startedAt: number
 }
 
 // Unsaved Studio Builder draft. Memory only (never localStorage) so it survives tab switches.
@@ -83,6 +95,7 @@ interface AppStore {
   pinnedLLMModels: PinnedLLMModels
   modelDownload: ModelDownloadState | null
   notification: AppNotification | null
+  activeReport: ActiveReport | null
 
   setTemplates: (templates: Template[]) => void
   upsertTemplate: (template: Template) => void
@@ -103,6 +116,7 @@ interface AppStore {
   refreshLLMModels: (afterCurrent?: boolean) => Promise<LLMModelsResponse>
   startModelDownload: (provider: string, model: string) => Promise<void>
   clearNotification: () => void
+  setActiveReport: (report: ActiveReport | null) => void
 }
 
 // Unsaved changes compared with the saved template (or anything entered for a new one)
@@ -134,6 +148,7 @@ export const useStore = create<AppStore>((set, get) => ({
   pinnedLLMModels: loadPinnedLLMModels(),
   modelDownload: null,
   notification: null,
+  activeReport: null,
 
   setTemplates: (templates) => {
     saveTemplates(templates)
@@ -351,4 +366,5 @@ export const useStore = create<AppStore>((set, get) => ({
     }
   },
   clearNotification: () => set({ notification: null }),
+  setActiveReport: (activeReport) => set({ activeReport }),
 }))

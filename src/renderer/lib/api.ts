@@ -579,3 +579,150 @@ export async function saveProfile(payload: {
   if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
   return body as UserProfile
 }
+
+// ── Periodic reports (contracts/path/reporting.yaml) ─────────────────────────
+
+export type PeriodType = 'monthly' | 'quarterly' | 'annual'
+// The backend also accepts 'both', but GET /reports/{id} then only returns JSON,
+// so the UI offers the two formats it can actually deliver.
+export type ReportFormat = 'pdf' | 'json'
+
+export interface GenerateReportRequest {
+  period_type: PeriodType
+  year: number
+  month?: number
+  quarter?: number
+  format: ReportFormat
+}
+
+export interface GenerateReportResponse {
+  job_id: string
+  job_type: string
+  status: string
+  estimated_seconds?: number | null
+  poll_url: string
+  report_id: string
+}
+
+export interface ReportSummaryGroup {
+  period: string
+  incident_count: number
+  forms_generated: number
+}
+
+export interface ReportIncidentItem {
+  incident_id: string
+  incident_number?: string | null
+  incident_date?: string | null
+  incident_type?: string | null
+  status?: string | null
+  forms_generated: number
+}
+
+export interface PeriodicReport {
+  report_id: string
+  period_type: PeriodType
+  period_label: string
+  generated_at: string
+  summary: {
+    date_from: string
+    date_to: string
+    total_incidents: number
+    by_type: Record<string, number>
+    by_status: Record<string, number>
+    forms_generated: number
+    avg_completeness_score: number
+    avg_processing_time_seconds: number
+    groups: ReportSummaryGroup[]
+  }
+  incidents: ReportIncidentItem[]
+  compliance: {
+    neris_submission_rate: number
+    average_submission_delay_days: number
+    overdue_incidents: number
+  }
+}
+
+export type ReportResult =
+  | { state: 'processing'; retryAfterSeconds: number }
+  | { state: 'pdf'; blob: Blob; filename: string }
+  | { state: 'json'; report: PeriodicReport }
+
+export class ReportApiError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+    readonly statusCode?: number
+  ) {
+    super(message)
+    this.name = 'ReportApiError'
+  }
+}
+
+function reportApiError(body: unknown, statusCode: number): ReportApiError {
+  const code = body && typeof body === 'object' && typeof (body as Record<string, unknown>)['error_code'] === 'string'
+    ? (body as Record<string, string>)['error_code']
+    : undefined
+  return new ReportApiError(extractErrorMessage(body, statusCode), code, statusCode)
+}
+
+const DEFAULT_REPORT_RETRY_SECONDS = 10
+
+export async function generateReport(payload: GenerateReportRequest): Promise<GenerateReportResponse> {
+  const response = await fetch(`${API_BASE_URL}/reports/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const body = await parseJsonResponse(response)
+  if (!response.ok) throw reportApiError(body, response.status)
+  return body as GenerateReportResponse
+}
+
+function filenameFromDisposition(header: string | null, fallback: string): string {
+  if (!header) return fallback
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(header)
+  if (encoded?.[1]) {
+    try {
+      return decodeURIComponent(encoded[1])
+    } catch {
+      // fall through to the plain filename
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(header)
+  return plain?.[1] || fallback
+}
+
+// GET /reports/{id}: 202 while generating, 200 with a PDF or a PeriodicReport when done.
+// Content-Disposition is only readable if the backend exposes it via CORS, so callers
+// pass a readable fallback filename.
+export async function fetchReportResult(
+  reportId: string,
+  fallbackFilename = `fireform-report-${reportId}.pdf`
+): Promise<ReportResult> {
+  const response = await fetch(`${API_BASE_URL}/reports/${encodeURIComponent(reportId)}`)
+
+  if (response.status === 202) {
+    const body = (await parseJsonResponse(response)) as Record<string, unknown>
+    const retry = Number(body['retry_after_seconds'])
+    return {
+      state: 'processing',
+      retryAfterSeconds: Number.isFinite(retry) && retry > 0 ? retry : DEFAULT_REPORT_RETRY_SECONDS,
+    }
+  }
+
+  if (!response.ok) {
+    const body = await parseJsonResponse(response)
+    throw reportApiError(body, response.status)
+  }
+
+  const contentType = response.headers.get('content-type') || ''
+  if (contentType.includes('application/pdf')) {
+    const blob = await response.blob()
+    const filename = filenameFromDisposition(response.headers.get('content-disposition'), fallbackFilename)
+    return { state: 'pdf', blob, filename }
+  }
+
+  const body = await parseJsonResponse(response)
+  return { state: 'json', report: body as PeriodicReport }
+}
