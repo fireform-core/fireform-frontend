@@ -28,7 +28,6 @@ export function App() {
   const {
     activeTab,
     setActiveTab,
-    setTemplates,
     templates,
     modelDownload,
     modelDownloadController,
@@ -38,7 +37,6 @@ export function App() {
   } = useStore(s => ({
     activeTab: s.activeTab,
     setActiveTab: s.setActiveTab,
-    setTemplates: s.setTemplates,
     templates: s.templates,
     modelDownload: s.modelDownload,
     modelDownloadController: s.modelDownloadController,
@@ -62,7 +60,7 @@ export function App() {
       // Load live templates before rendering so stale localStorage data never shows first
       try {
         const fetched = await fetchTemplates()
-        setTemplates(fetched)
+        useStore.getState().setTemplates(fetched)
       } catch {
         // Fallback handled by store
       }
