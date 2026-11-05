@@ -104,7 +104,7 @@ export function Settings() {
     setAnimationsEnabled(next)
     try {
       window.localStorage.setItem('ff-animations', next ? 'on' : 'off')
-    } catch {}
+    } catch { }
   }
   useEffect(() => {
     refreshLLMModels()
@@ -117,9 +117,9 @@ export function Settings() {
           const customFields: CustomFieldRow[] =
             data.custom_fields && typeof data.custom_fields === 'object'
               ? Object.entries(data.custom_fields).map(([key, value]) => ({
-                  key,
-                  value: String(value ?? ''),
-                }))
+                key,
+                value: String(value ?? ''),
+              }))
               : []
           setProfile({
             profile_id: data.profile_id,
@@ -217,15 +217,6 @@ export function Settings() {
         <div>
           <div className="flex items-center justify-between gap-3">
             <SectionHeader icon={Cpu} title="AI Model" />
-            <Button
-              ref={manageProvidersRef}
-              type="button"
-              variant="outline"
-              className="mt-8"
-              onClick={event => openProviders('ollama', event.currentTarget)}
-            >
-              Configure providers
-            </Button>
           </div>
           <div className="bg-white border border-zinc-200 rounded-xl px-5">
             <SettingRow
@@ -235,6 +226,15 @@ export function Settings() {
               <ModelSelector
                 onConfigure={(provider, trigger) => openProviders(provider, trigger)}
               />
+              <Button
+                ref={manageProvidersRef}
+                type="button"
+                variant="outline"
+                className=""
+                onClick={event => openProviders('ollama', event.currentTarget)}
+              >
+                Configure providers
+              </Button>
             </SettingRow>
             {catalogError && (
               <p className="pb-3 text-xs text-red-600" role="alert">

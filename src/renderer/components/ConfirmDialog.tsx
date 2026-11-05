@@ -1,5 +1,5 @@
-import type { ReactNode} from 'react';
-import { useEffect } from 'react'
+import type { ReactNode } from 'react'
+import { useEffect, useRef } from 'react'
 import { Button } from './ui/button'
 
 export function TrashIcon({ size = 16 }: { size?: number }) {
@@ -32,6 +32,7 @@ interface ConfirmDialogProps {
   cancelLabel?: string
   busy?: boolean
   error?: string | null
+  fallbackFocus?: () => HTMLElement | null
   onConfirm: () => void
   onCancel: () => void
 }
@@ -44,33 +45,81 @@ export function ConfirmDialog({
   cancelLabel = 'Cancel',
   busy = false,
   error = null,
+  fallbackFocus,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const cancelButtonRef = useRef<HTMLButtonElement>(null)
+  const onCancelRef = useRef(onCancel)
+  const busyRef = useRef(busy)
+  const fallbackFocusRef = useRef(fallbackFocus)
+
+  useEffect(() => {
+    onCancelRef.current = onCancel
+    busyRef.current = busy
+    fallbackFocusRef.current = fallbackFocus
+  }, [onCancel, busy, fallbackFocus])
+
   useEffect(() => {
     if (!isOpen) return
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !busy) onCancel()
+    const dialog = dialogRef.current
+    if (!dialog) return
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+    if (!dialog.open) dialog.showModal()
+    cancelButtonRef.current?.focus()
+
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== 'Tab' || !dialog) return
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ))
+      if (!focusable.length) {
+        event.preventDefault()
+        dialog.focus()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [isOpen, busy, onCancel])
+    dialog.addEventListener('keydown', onKey)
+    return () => {
+      dialog.removeEventListener('keydown', onKey)
+      if (dialog.open) dialog.close()
+      if (previousFocus?.isConnected) previousFocus.focus()
+      else fallbackFocusRef.current?.()?.focus()
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/45 p-4"
+    <dialog
+      ref={dialogRef}
+      tabIndex={-1}
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
+      aria-describedby="confirm-dialog-message"
+      className="m-auto w-[min(24rem,calc(100vw-32px))] rounded-lg border border-zinc-200 bg-white p-0 text-zinc-900 shadow-xl backdrop:bg-zinc-950/45"
       onClick={e => {
-        if (e.target === e.currentTarget && !busy) onCancel()
+        if (e.target === e.currentTarget && !busyRef.current) onCancelRef.current()
+      }}
+      onCancel={event => {
+        event.preventDefault()
+        if (!busyRef.current) onCancelRef.current()
       }}
     >
-      <div
-        className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white shadow-xl"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-      >
+      <div>
         <div className="px-5 pt-5 pb-4 text-center">
           <span
             className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600"
@@ -81,7 +130,7 @@ export function ConfirmDialog({
           <h3 id="confirm-dialog-title" className="text-sm font-semibold text-zinc-900">
             {title}
           </h3>
-          <p className="mt-1 text-xs text-zinc-600">{message}</p>
+          <p id="confirm-dialog-message" className="mt-1 text-xs text-zinc-600">{message}</p>
           {error && (
             <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700" role="alert">
               {error}
@@ -89,7 +138,7 @@ export function ConfirmDialog({
           )}
         </div>
         <div className="flex justify-end gap-2 border-t border-zinc-200 px-5 py-3">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
+          <Button ref={cancelButtonRef} type="button" variant="outline" onClick={onCancel} disabled={busy}>
             {cancelLabel}
           </Button>
           <Button type="button" variant="destructive" onClick={onConfirm} disabled={busy}>
@@ -97,6 +146,6 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </dialog>
   )
 }

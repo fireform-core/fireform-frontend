@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Star } from 'lucide-react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { ChevronDown, Loader2, Star, Trash2 } from 'lucide-react'
 import {
   addLLMManualModel,
   deleteLLMManualModel,
+  deleteOllamaModel,
   deleteLLMProviderConfig,
   describeLLMError,
   fetchLLMExternalConsent,
@@ -12,6 +13,7 @@ import {
   setLLMExternalConsent,
   validateLLMProviderConfig,
   type LLMExternalConsent,
+  type LLMModelInfo,
   type LLMProviderConfig,
   type LLMProviderName,
 } from '../../lib/api'
@@ -21,6 +23,7 @@ import type { ModelDownloadState } from '../../store'
 import type { LLMModelChoice } from '../../lib/api'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { cn } from '../../lib/utils'
 
 const PROVIDERS: { id: LLMProviderName; name: string }[] = [
@@ -33,6 +36,30 @@ const PROVIDERS: { id: LLMProviderName; name: string }[] = [
 
 type ConfigurableProvider = Exclude<LLMProviderName, 'ollama'>
 
+function describeDeleteModelError(error: unknown, model: string): string {
+  if (error instanceof LLMApiError) {
+    if (error.code === 'LLM_MODEL_IN_USE') {
+      const detail = error.message.toLowerCase()
+      if (detail.includes('download') || detail.includes('pull')) {
+        return `${model} cannot be deleted while it is being downloaded.`
+      }
+      if (detail.includes('global')) return `${model} is the global default model and cannot be deleted.`
+      if (detail.includes('default')) return `${model} is the Ollama provider default model and cannot be deleted.`
+      return `${model} is in use as a default model or has an active download.`
+    }
+    if (error.code === 'LLM_NOT_AVAILABLE') {
+      return `${model} cannot be deleted because it is outside the Ollama models allowed by server configuration.`
+    }
+    if (error.code === 'LLM_UNAVAILABLE' || error.statusCode === 503) {
+      return 'Ollama could not be reached. Check that it is running and try again.'
+    }
+    if (error.statusCode === 422) {
+      return `Ollama rejected the model name or configuration. ${error.message}`
+    }
+  }
+  return describeLLMError(error)
+}
+
 function ModelRows({
   provider,
   options,
@@ -40,9 +67,15 @@ function ModelRows({
   pinned,
   busy,
   modelDownload,
+  canCancelDownload,
+  providerDefaultModel,
+  globalDefaultModel,
+  deletingModel,
   onTogglePinned,
   onSelect,
   onDownload,
+  onCancelDownload,
+  onDeleteModel,
   onRemoveManual,
 }: {
   provider: LLMProviderName
@@ -51,11 +84,18 @@ function ModelRows({
   pinned: string[]
   busy: boolean
   modelDownload: ModelDownloadState | null
+  canCancelDownload: boolean
+  providerDefaultModel: string | null
+  globalDefaultModel: string | null
+  deletingModel: string | null
   onTogglePinned: (model: string) => void
   onSelect: (model: string) => void
   onDownload: (model: string) => void
+  onCancelDownload: () => void
+  onDeleteModel: (model: LLMModelInfo) => void
   onRemoveManual?: (model: string) => void
 }) {
+  const reasonIdPrefix = useId()
   if (!options.length) {
     return <p className="p-4 text-sm text-zinc-500">No matching models found.</p>
   }
@@ -68,6 +108,19 @@ function ModelRows({
         const isDownloading = modelDownload?.status === 'downloading'
           && modelDownload.provider === provider
           && modelDownload.model === option.model.name
+        const isDeleting = deletingModel === option.model.name
+        const deleteReason = isDownloading
+          ? 'This model cannot be deleted while it is downloading.'
+          : option.model.name === globalDefaultModel
+            ? 'This is the global default model.'
+            : option.model.name === providerDefaultModel
+              ? 'This is the Ollama provider default model.'
+              : ''
+        const deletableOllamaModel = provider === 'ollama'
+          && !option.downloadable
+          && option.model.installed === true
+          && option.model.manual !== true
+        const deleteReasonId = `${reasonIdPrefix}-${encodeURIComponent(option.model.name)}`
         return (
           <li key={option.model.name} className="flex items-center justify-between gap-3 px-4 py-3">
             <div className="min-w-0">
@@ -89,14 +142,27 @@ function ModelRows({
                 <Star className={cn('h-4 w-4', isPinned && 'fill-current')} aria-hidden="true" />
               </button>
               {option.downloadable ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={modelDownload?.status === 'downloading'}
-                  onClick={() => onDownload(option.model.name)}
-                >
-                  {isDownloading ? 'Downloading…' : 'Download'}
-                </Button>
+                isDownloading ? (
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="outline" disabled>
+                      Downloading…
+                    </Button>
+                    {canCancelDownload && (
+                      <Button type="button" variant="outline" onClick={onCancelDownload}>
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={modelDownload?.status === 'downloading'}
+                    onClick={() => onDownload(option.model.name)}
+                  >
+                    Download
+                  </Button>
+                )
               ) : (
                 <Button
                   type="button"
@@ -110,6 +176,24 @@ function ModelRows({
                 <Button type="button" variant="outline" disabled={busy} onClick={() => onRemoveManual(option.model.name)}>
                   Remove
                 </Button>
+              )}
+              {deletableOllamaModel && (
+                <>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${option.model.name}`}
+                    aria-describedby={deleteReason ? deleteReasonId : undefined}
+                    title={deleteReason || undefined}
+                    disabled={busy || Boolean(deletingModel) || Boolean(deleteReason)}
+                    onClick={() => onDeleteModel(option.model)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-red-600 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isDeleting
+                      ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+                  </button>
+                  {deleteReason && <span id={deleteReasonId} className="sr-only">{deleteReason}</span>}
+                </>
               )}
             </div>
           </li>
@@ -146,7 +230,10 @@ export function ProviderConfigModal({
   const pinnedLLMModels = useStore(state => state.pinnedLLMModels)
   const setPinnedLLMModels = useStore(state => state.setPinnedLLMModels)
   const startModelDownload = useStore(state => state.startModelDownload)
+  const cancelModelDownload = useStore(state => state.cancelModelDownload)
   const modelDownload = useStore(state => state.modelDownload)
+  const modelDownloadController = useStore(state => state.modelDownloadController)
+  const notify = useStore(state => state.notify)
   const [selectedProvider, setSelectedProvider] = useState<LLMProviderName>(initialProvider)
   const [configs, setConfigs] = useState<LLMProviderConfig[]>([])
   const [consent, setConsent] = useState<LLMExternalConsent | null>(null)
@@ -161,6 +248,10 @@ export function ProviderConfigModal({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [pendingDeleteModel, setPendingDeleteModel] = useState<LLMModelInfo | null>(null)
+  const [deletingModel, setDeletingModel] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState('')
+  const modelSearchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -195,6 +286,12 @@ export function ProviderConfigModal({
   const baseUrl = baseUrlOverride ?? customConfig?.base_url ?? ''
   const structuredOutput = structuredOutputOverride ?? customConfig?.structured_output ?? true
   const providerModels = catalog?.providers.find(item => item.provider === selectedProvider)
+  const providerDefaultModel = selectedProvider === 'ollama'
+    ? providerModels?.default_model || null
+    : null
+  const globalDefaultModel = selectedProvider === 'ollama' && catalog?.default.provider === 'ollama'
+    ? catalog.default.model
+    : null
   const options = optionsFor(providerModels)
   const providerFailure = providerModels?.error_code
     ? describeLLMError(new LLMApiError(providerModels.detail || 'Provider is unavailable.', providerModels.error_code))
@@ -395,6 +492,54 @@ export function ProviderConfigModal({
     )
   }
 
+  async function confirmDeleteModel() {
+    const model = pendingDeleteModel
+    if (!model || deletingModel) return
+    const wasSelected = selectedLLM?.provider === 'ollama' && selectedLLM.model === model.name
+    setDeletingModel(model.name)
+    setDeleteError('')
+    try {
+      await deleteOllamaModel(model.name)
+    } catch (deleteErrorValue) {
+      if (deleteErrorValue instanceof LLMApiError
+        && deleteErrorValue.code === 'LLM_MODEL_NOT_INSTALLED') {
+        try {
+          await refreshLLMModels(true)
+          setDeleteError(`${model.name} is no longer installed. The model list has been refreshed.`)
+        } catch (refreshError) {
+          const detail = refreshError instanceof Error ? refreshError.message : 'Unknown error.'
+          setDeleteError(`${model.name} is no longer installed, and the model list could not be refreshed: ${detail}`)
+        }
+      } else {
+        setDeleteError(describeDeleteModelError(deleteErrorValue, model.name))
+      }
+      setDeletingModel(null)
+      return
+    }
+
+    setPendingDeleteModel(null)
+    setDeletingModel(null)
+    try {
+      await refreshLLMModels(true)
+      const nextSelection = useStore.getState().selectedLLM
+      notify({
+        text: wasSelected
+          ? nextSelection
+            ? `Deleted ${model.name}. Switched to ${nextSelection.provider} · ${nextSelection.model}.`
+            : `Deleted ${model.name}. No model is currently available.`
+          : `Deleted ${model.name}.`,
+        type: 'success',
+      })
+    } catch (refreshError) {
+      const detail = refreshError instanceof Error ? refreshError.message : 'Unknown error.'
+      notify({
+        text: `Deleted ${model.name}, but the model list could not be refreshed: ${detail}`,
+        type: 'error',
+      })
+    }
+    requestAnimationFrame(() => modelSearchRef.current?.focus())
+  }
+
   const statusRows = PROVIDERS.map(item => {
     const status = configs.find(entry => entry.provider === item.id)
     const available = item.id === 'ollama'
@@ -404,18 +549,19 @@ export function ProviderConfigModal({
   })
 
   return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby="provider-config-title"
-      className="m-auto h-[min(88vh,760px)] w-[min(1120px,calc(100vw-32px))] max-w-none overflow-hidden rounded-2xl border border-zinc-200 bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-zinc-950/50"
-      onCancel={event => {
-        event.preventDefault()
-        handleClose()
-      }}
-      onClick={event => {
-        if (event.target === event.currentTarget) handleClose()
-      }}
-    >
+    <>
+      <dialog
+        ref={dialogRef}
+        aria-labelledby="provider-config-title"
+        className="m-auto h-[min(88vh,760px)] w-[min(1120px,calc(100vw-32px))] max-w-none overflow-hidden rounded-2xl border border-zinc-200 bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-zinc-950/50"
+        onCancel={event => {
+          event.preventDefault()
+          handleClose()
+        }}
+        onClick={event => {
+          if (event.target === event.currentTarget) handleClose()
+        }}
+      >
       <div className="flex h-full min-h-0 flex-col">
         <header className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
           <div>
@@ -571,6 +717,7 @@ export function ProviderConfigModal({
                 Search models
                 <Input
                   id="provider-model-search"
+                  ref={modelSearchRef}
                   className="mt-1"
                   value={modelSearch}
                   onChange={event => setModelSearch(event.target.value)}
@@ -598,9 +745,18 @@ export function ProviderConfigModal({
                         pinned={pinnedModels}
                         busy={busy}
                         modelDownload={modelDownload}
+                        canCancelDownload={Boolean(modelDownloadController)}
+                        providerDefaultModel={providerDefaultModel}
+                        globalDefaultModel={globalDefaultModel}
+                        deletingModel={deletingModel}
                         onTogglePinned={togglePinned}
                         onSelect={model => setSelectedLLM({ provider: selectedProvider, model })}
                         onDownload={model => void startModelDownload('ollama', model)}
+                        onCancelDownload={() => void cancelModelDownload()}
+                        onDeleteModel={model => {
+                          setDeleteError('')
+                          setPendingDeleteModel(model)
+                        }}
                         onRemoveManual={selectedProvider === 'ollama' ? undefined : model => void removeManualModel(model)}
                       />
                     </div>
@@ -628,9 +784,18 @@ export function ProviderConfigModal({
                         pinned={pinnedModels}
                         busy={busy}
                         modelDownload={modelDownload}
+                        canCancelDownload={Boolean(modelDownloadController)}
+                        providerDefaultModel={providerDefaultModel}
+                        globalDefaultModel={globalDefaultModel}
+                        deletingModel={deletingModel}
                         onTogglePinned={togglePinned}
                         onSelect={model => setSelectedLLM({ provider: selectedProvider, model })}
                         onDownload={model => void startModelDownload('ollama', model)}
+                        onCancelDownload={() => void cancelModelDownload()}
+                        onDeleteModel={model => {
+                          setDeleteError('')
+                          setPendingDeleteModel(model)
+                        }}
                         onRemoveManual={selectedProvider === 'ollama' ? undefined : model => void removeManualModel(model)}
                       />
                     ) : (
@@ -676,6 +841,23 @@ export function ProviderConfigModal({
           </section>
         </div>
       </div>
-    </dialog>
+      </dialog>
+      <ConfirmDialog
+        isOpen={pendingDeleteModel !== null}
+        title={`Delete ${pendingDeleteModel?.name || 'model'}?`}
+        message={`It will be removed from this computer.${pendingDeleteModel?.size_gb != null
+          ? ` This model uses ${pendingDeleteModel.size_gb.toFixed(1)} GB.`
+          : ''}`}
+        busy={deletingModel !== null}
+        error={deleteError}
+        fallbackFocus={() => modelSearchRef.current}
+        onConfirm={() => void confirmDeleteModel()}
+        onCancel={() => {
+          if (deletingModel) return
+          setPendingDeleteModel(null)
+          setDeleteError('')
+        }}
+      />
+    </>
   )
 }
