@@ -26,11 +26,33 @@ import { Input } from '../../components/ui/input'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { cn } from '../../lib/utils'
 
+function endpointIsExternal(raw: string): boolean {
+  try {
+    const host = new URL(raw).hostname.toLowerCase().replace(/^\[|\]$/g, '')
+    if (!host || host === 'localhost' || host === 'host.docker.internal' || /\.(local|internal|lan)$/.test(host)) return false
+    if (host.includes(':')) {
+      if (host === '::1' || host === '::' || /^(fc|fd)/i.test(host) || /^fe[89ab][0-9a-f]:/i.test(host)) return false
+      return true
+    }
+    const octets = host.split('.').map(Number)
+    if (octets.length === 4 && octets.every(part => Number.isInteger(part) && part >= 0 && part <= 255)) {
+      const [a, b] = octets
+      if (a === 10 || a === 127 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254) || a === 0) return false
+      return true
+    }
+    if (!host.includes('.')) return false // Docker service names are local defaults.
+    return true
+  } catch {
+    return true
+  }
+}
+
 const PROVIDERS: { id: LLMProviderName; name: string }[] = [
   { id: 'ollama', name: 'Ollama' },
   { id: 'gemini', name: 'Gemini' },
   { id: 'openai', name: 'OpenAI' },
   { id: 'anthropic', name: 'Anthropic' },
+  { id: 'llama_cpp', name: 'llama.cpp' },
   { id: 'custom', name: 'Custom server' },
 ]
 
@@ -282,9 +304,9 @@ export function ProviderConfigModal({
   }, [refreshLLMModels])
 
   const config = configs.find(item => item.provider === selectedProvider)
-  const customConfig = configs.find(item => item.provider === 'custom')
-  const baseUrl = baseUrlOverride ?? customConfig?.base_url ?? ''
-  const structuredOutput = structuredOutputOverride ?? customConfig?.structured_output ?? true
+  const isOpenAICompatible = selectedProvider === 'custom' || selectedProvider === 'llama_cpp'
+  const baseUrl = baseUrlOverride ?? (isOpenAICompatible ? config?.base_url : undefined) ?? ''
+  const structuredOutput = structuredOutputOverride ?? (isOpenAICompatible ? config?.structured_output : undefined) ?? true
   const providerModels = catalog?.providers.find(item => item.provider === selectedProvider)
   const providerDefaultModel = selectedProvider === 'ollama'
     ? providerModels?.default_model || null
@@ -306,8 +328,8 @@ export function ProviderConfigModal({
   const selectedSummary = selectedLLM
     ? `${selectedLLM.provider} · ${selectedLLM.model}`
     : 'No model selected'
-  const isExternal = selectedProvider === 'custom'
-    ? Boolean(config?.external)
+  const isExternal = isOpenAICompatible
+    ? (baseUrlOverride === null ? Boolean(config?.external) : endpointIsExternal(baseUrl))
     : selectedProvider !== 'ollama'
   const consentRequired = isExternal && !consent?.allow_external
   const manualModels = providerModels?.models.filter(model => model.manual) || []
@@ -346,7 +368,7 @@ export function ProviderConfigModal({
     const provider = selectedProvider as ConfigurableProvider
     const request = {
       ...(apiKey ? { api_key: apiKey } : {}),
-      ...(provider === 'custom'
+      ...(isOpenAICompatible
         ? { base_url: baseUrl, structured_output: structuredOutput }
         : {}),
     }
@@ -372,7 +394,7 @@ export function ProviderConfigModal({
     const provider = selectedProvider as ConfigurableProvider
     const request = {
       ...(apiKey ? { api_key: apiKey } : {}),
-      ...(provider === 'custom'
+      ...(isOpenAICompatible
         ? { base_url: baseUrl, structured_output: structuredOutput }
         : {}),
     }
@@ -393,7 +415,7 @@ export function ProviderConfigModal({
           await saveLLMProviderConfig(provider, request)
         } catch (error) {
           if (
-            provider === 'custom'
+            isOpenAICompatible
             && !enabledConsent
             && !consent?.allow_external
             && error instanceof LLMApiError
@@ -613,7 +635,7 @@ export function ProviderConfigModal({
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-violet-700">
-                  {selectedProvider === 'ollama' ? 'Local provider' : 'External service'}
+                  {isExternal ? 'External service' : 'Local provider'}
                 </p>
                 <h3 className="mt-1 text-lg font-semibold">
                   {PROVIDERS.find(item => item.id === selectedProvider)?.name}
@@ -633,7 +655,7 @@ export function ProviderConfigModal({
 
             {selectedProvider !== 'ollama' && (
               <div className="mb-5 space-y-3 rounded-xl border border-zinc-200 p-4">
-                {selectedProvider === 'custom' && (
+                {isOpenAICompatible && (
                   <>
                     <label className="block text-xs font-medium text-zinc-700" htmlFor="custom-base-url">
                       Base URL
@@ -670,7 +692,7 @@ export function ProviderConfigModal({
                     name="provider-api-key"
                     value={apiKey}
                     onChange={event => setApiKey(event.target.value)}
-                    placeholder={config?.key_hint ? `Saved key · ends in ${config.key_hint}` : 'Enter API key'}
+                    placeholder={config?.key_hint ? `Saved key · ends in ${config.key_hint}` : selectedProvider === 'llama_cpp' ? 'Optional; usually not required' : 'Enter API key'}
                   />
                 </label>
                 {isExternal && (
@@ -682,7 +704,7 @@ export function ProviderConfigModal({
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={busy || consentRequired || (selectedProvider !== 'custom' && !apiKey)}
+                    disabled={busy || consentRequired || (!isOpenAICompatible && !apiKey)}
                     onClick={() => void validateProvider()}
                   >
                     {busy ? 'Working…' : 'Validate'}
@@ -691,8 +713,8 @@ export function ProviderConfigModal({
                     type="button"
                     disabled={
                       busy
-                      || (selectedProvider === 'custom' && !baseUrl.trim())
-                      || (selectedProvider !== 'custom' && !apiKey && !config?.configured)
+                      || (isOpenAICompatible && !baseUrl.trim())
+                      || (!isOpenAICompatible && !apiKey && !config?.configured)
                     }
                     onClick={() => void saveProvider()}
                   >
@@ -702,7 +724,7 @@ export function ProviderConfigModal({
                   </Button>
                   {config?.source === 'ui' && (
                     <Button type="button" variant="outline" disabled={busy} onClick={() => void removeProvider()}>
-                      Remove key
+                      Remove configuration
                     </Button>
                   )}
                 </div>
