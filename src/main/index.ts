@@ -1,20 +1,52 @@
 import { app, BrowserWindow, dialog } from 'electron'
 import { join } from 'path'
-import type { ChildProcess } from 'child_process';
+import { existsSync, mkdirSync } from 'fs'
+import type { ChildProcess } from 'child_process'
 import { spawn } from 'child_process'
+import { ensureOllamaService } from './ollama'
 
 let backendProcess: ChildProcess | null = null
 
 function startBackend(): void {
-  if (app.isPackaged) {
-    const ext = process.platform === 'win32' ? '.exe' : ''
-    const backendPath = join(process.resourcesPath, 'bin', `api-backend${ext}`)
-    backendProcess = spawn(backendPath, [], { stdio: 'ignore' })
+  const ext = process.platform === 'win32' ? '.exe' : ''
+  const packagedPath = join(process.resourcesPath, 'bin', `api-backend${ext}`)
+  const devBinPath = join(__dirname, '../../bin', `api-backend${ext}`)
+
+  const backendPath = app.isPackaged
+    ? packagedPath
+    : existsSync(devBinPath)
+      ? devBinPath
+      : null
+
+  if (backendPath && existsSync(backendPath)) {
+    const userDataPath = app.getPath('userData')
+    const dataDir = join(userDataPath, 'data')
+    const secretsDir = join(userDataPath, 'secrets')
+    const dbPath = join(dataDir, 'fireform.db')
+    const secretKeyFile = join(secretsDir, 'llm_secret.key')
+
+    mkdirSync(dataDir, { recursive: true })
+    mkdirSync(secretsDir, { recursive: true })
+
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      FIREFORM_DESKTOP: 'true',
+      FIREFORM_DATA_DIR: dataDir,
+      DATABASE_URL: `sqlite:///${dbPath}`,
+      LLM_SECRET_KEY_FILE: secretKeyFile,
+      PORT: '8000',
+    }
+
+    console.log(`Starting FireForm API backend from ${backendPath}...`)
+    backendProcess = spawn(backendPath, [], { env, stdio: 'ignore' })
     backendProcess.on('error', err => {
       console.error('Failed to start backend process.', err)
     })
+    backendProcess.on('exit', (code, signal) => {
+      console.log(`Backend process exited with code ${code}, signal ${signal}`)
+    })
   } else {
-    console.log('Development mode: backend assumed running via Docker.')
+    console.log('No bundled binary found; assuming backend running via Docker or local uvicorn.')
   }
 }
 
@@ -55,13 +87,25 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   startBackend()
+  void ensureOllamaService()
   createWindow()
 })
 
 app.on('will-quit', () => {
-  backendProcess?.kill()
+  if (backendProcess && backendProcess.pid) {
+    if (process.platform === 'win32') {
+      try {
+        spawn('taskkill', ['/pid', backendProcess.pid.toString(), '/T', '/F'])
+      } catch {
+        backendProcess.kill()
+      }
+    } else {
+      backendProcess.kill('SIGTERM')
+    }
+    backendProcess = null
+  }
 })
 
 app.on('window-all-closed', () => {
