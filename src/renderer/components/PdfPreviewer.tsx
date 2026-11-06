@@ -98,7 +98,7 @@ export function PdfPreviewer({ initialPath }: PdfPreviewerProps = {}) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = signedFileName(fileName)
+      a.download = signedFileName(fileName ?? 'document.pdf')
       document.body.appendChild(a)
       a.click()
       a.remove()

@@ -32,7 +32,9 @@ export function SignatureModal({ isOpen, busy = false, error = null, onClose, on
   const [strokeCount, setStrokeCount] = useState(0)
 
   const inkColorRef = useRef(inkColor)
-  inkColorRef.current = inkColor
+  useEffect(() => {
+    inkColorRef.current = inkColor
+  }, [inkColor])
 
   const getScale = useCallback(() => {
     const canvas = canvasRef.current
