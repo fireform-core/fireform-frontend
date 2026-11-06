@@ -606,17 +606,17 @@ export interface GenerateReportResponse {
 
 export interface ReportSummaryGroup {
   period: string
-  incident_count: number
-  forms_generated: number
+  submission_count: number
 }
 
-export interface ReportIncidentItem {
-  incident_id: string
-  incident_number?: string | null
-  incident_date?: string | null
-  incident_type?: string | null
-  status?: string | null
-  forms_generated: number
+export interface SubmissionSummaryItem {
+  id: number
+  template_id: number
+  template_name?: string | null
+  input_text?: string | null
+  output_pdf_path: string
+  pdf_url?: string | null
+  created_at?: string | null
 }
 
 export interface PeriodicReport {
@@ -627,20 +627,11 @@ export interface PeriodicReport {
   summary: {
     date_from: string
     date_to: string
-    total_incidents: number
-    by_type: Record<string, number>
-    by_status: Record<string, number>
-    forms_generated: number
-    avg_completeness_score: number
-    avg_processing_time_seconds: number
+    total_submissions: number
+    by_template: Record<string, number>
     groups: ReportSummaryGroup[]
   }
-  incidents: ReportIncidentItem[]
-  compliance: {
-    neris_submission_rate: number
-    average_submission_delay_days: number
-    overdue_incidents: number
-  }
+  submissions: SubmissionSummaryItem[]
 }
 
 export type ReportResult =

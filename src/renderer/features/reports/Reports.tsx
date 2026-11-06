@@ -7,7 +7,6 @@ import {
   FileText,
   LoaderCircle,
   RotateCw,
-  ShieldCheck,
   TriangleAlert,
   X,
 } from 'lucide-react'
@@ -63,7 +62,7 @@ export function Reports() {
         <div>
           <h1 className="text-xl font-bold tracking-tight text-zinc-900">Periodic Reports</h1>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Monthly, quarterly and annual summaries of incidents, generated forms and NERIS compliance.
+            Monthly, quarterly and annual summaries of form submissions and template usage.
           </p>
         </div>
       </div>
@@ -385,12 +384,19 @@ function JsonReportView({
   fileStem: string
   onClose: () => void
 }) {
-  const { summary, compliance, incidents } = report
+  const { summary, submissions } = report
+  const { setPreviewPath, setActiveTab } = useStore(s => ({
+    setPreviewPath: s.setPreviewPath,
+    setActiveTab: s.setActiveTab,
+  }))
 
   const handleDownload = () => {
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
     downloadBlob(blob, `${fileStem}.json`)
   }
+
+  const templateEntries = Object.entries(summary.by_template)
+  const mostActiveTemplate = templateEntries.length > 0 ? templateEntries[0][0] : '—'
 
   return (
     <div className="space-y-4">
@@ -415,35 +421,13 @@ function JsonReportView({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <StatCard label="Total incidents" value={summary.total_incidents} />
-        <StatCard label="Forms generated" value={summary.forms_generated} />
-        <StatCard label="Avg completeness" value={`${formatNumber(summary.avg_completeness_score)}%`} />
-        <StatCard label="Avg processing time" value={`${formatNumber(summary.avg_processing_time_seconds)}s`} />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <StatCard label="Total submissions" value={summary.total_submissions} />
+        <StatCard label="Templates used" value={templateEntries.length} />
+        <StatCard label="Most active template" value={mostActiveTemplate} />
       </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-zinc-900 flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-zinc-500" />
-            NERIS Compliance
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-3 gap-3">
-          <Metric label="Submission rate" value={`${formatNumber(compliance.neris_submission_rate)}%`} />
-          <Metric label="Avg submission delay" value={`${formatNumber(compliance.average_submission_delay_days)} days`} />
-          <Metric
-            label="Overdue incidents"
-            value={compliance.overdue_incidents}
-            tone={compliance.overdue_incidents > 0 ? 'warn' : 'ok'}
-          />
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <BreakdownCard title="By incident type" data={summary.by_type} barClass="bg-zinc-900" />
-        <BreakdownCard title="By status" data={summary.by_status} barClass="bg-emerald-600" />
-      </div>
+      <BreakdownCard title="Submissions by template" data={summary.by_template} barClass="bg-red-600" />
 
       {summary.groups.length > 0 && (
         <Card>
@@ -455,16 +439,14 @@ function JsonReportView({
               <thead className="text-zinc-500 uppercase font-mono text-[10px] border-b border-zinc-200">
                 <tr>
                   <th className="py-2">Period</th>
-                  <th className="py-2 text-right">Incidents</th>
-                  <th className="py-2 text-right">Forms</th>
+                  <th className="py-2 text-right">Submissions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
                 {summary.groups.map(group => (
                   <tr key={group.period}>
                     <td className="py-2 font-medium text-zinc-900">{group.period}</td>
-                    <td className="py-2 text-right font-mono">{group.incident_count}</td>
-                    <td className="py-2 text-right font-mono">{group.forms_generated}</td>
+                    <td className="py-2 text-right font-mono">{group.submission_count}</td>
                   </tr>
                 ))}
               </tbody>
@@ -475,35 +457,55 @@ function JsonReportView({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-zinc-900">Incidents ({incidents.length})</CardTitle>
+          <CardTitle className="text-sm font-semibold text-zinc-900">Form Submissions ({submissions.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {incidents.length === 0 ? (
-            <p className="py-6 text-center text-xs text-zinc-400">No incidents were recorded in this period.</p>
+          {submissions.length === 0 ? (
+            <p className="py-6 text-center text-xs text-zinc-400">No form submissions were recorded in this period.</p>
           ) : (
             <div className="max-h-96 overflow-auto">
               <table className="w-full text-left text-xs">
                 <thead className="sticky top-0 bg-white text-zinc-500 uppercase font-mono text-[10px] border-b border-zinc-200">
                   <tr>
-                    <th className="py-2 pr-2">Incident #</th>
-                    <th className="py-2 pr-2">Date</th>
-                    <th className="py-2 pr-2">Type</th>
-                    <th className="py-2 pr-2">Status</th>
-                    <th className="py-2 text-right">Forms</th>
+                    <th className="py-2 pr-2">ID</th>
+                    <th className="py-2 pr-2">Date & Time</th>
+                    <th className="py-2 pr-2">Template</th>
+                    <th className="py-2 pr-2">Input Preview</th>
+                    <th className="py-2 text-right">PDF</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {incidents.map(incident => (
-                    <tr key={incident.incident_id} className="hover:bg-zinc-50/80">
+                  {submissions.map(sub => (
+                    <tr key={sub.id} className="hover:bg-zinc-50/80">
                       <td className="py-2 pr-2 font-mono text-zinc-900">
-                        {incident.incident_number || incident.incident_id.slice(0, 8)}
+                        #{sub.id}
                       </td>
-                      <td className="py-2 pr-2 font-mono text-zinc-600">{formatDate(incident.incident_date)}</td>
-                      <td className="py-2 pr-2 text-zinc-700">{humanize(incident.incident_type)}</td>
+                      <td className="py-2 pr-2 font-mono text-zinc-600">
+                        {sub.created_at ? formatDateTime(sub.created_at) : '—'}
+                      </td>
                       <td className="py-2 pr-2">
-                        <Badge variant="secondary" className="text-[10px]">{humanize(incident.status)}</Badge>
+                        <Badge variant="secondary" className="text-[10px]">{sub.template_name || 'Unknown'}</Badge>
                       </td>
-                      <td className="py-2 text-right font-mono">{incident.forms_generated}</td>
+                      <td className="py-2 pr-2 text-zinc-700 max-w-[200px] truncate" title={sub.input_text || ''}>
+                        {sub.input_text || '—'}
+                      </td>
+                      <td className="py-2 text-right">
+                        {sub.output_pdf_path ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-[11px] px-2"
+                            onClick={() => {
+                              setPreviewPath(sub.output_pdf_path)
+                              setActiveTab('pdfPreviewer')
+                            }}
+                          >
+                            Preview
+                          </Button>
+                        ) : (
+                          <span className="text-zinc-400 font-mono">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -524,22 +526,6 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
         <CardTitle className="text-2xl font-black tracking-tight text-zinc-900 mt-1">{value}</CardTitle>
       </CardHeader>
     </Card>
-  )
-}
-
-function Metric({ label, value, tone }: { label: string; value: string | number; tone?: 'ok' | 'warn' }) {
-  return (
-    <div>
-      <p className="uppercase font-mono text-[10px] text-zinc-500">{label}</p>
-      <p
-        className={cn(
-          'text-lg font-bold mt-0.5',
-          tone === 'warn' ? 'text-amber-700' : tone === 'ok' ? 'text-emerald-700' : 'text-zinc-900'
-        )}
-      >
-        {value}
-      </p>
-    </div>
   )
 }
 
@@ -577,10 +563,6 @@ function BreakdownCard({ title, data, barClass }: { title: string; data: Record<
 function humanize(value: string | null | undefined): string {
   if (!value) return '—'
   return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-}
-
-function formatNumber(value: number): string {
-  return Number.isFinite(value) ? value.toLocaleString(undefined, { maximumFractionDigits: 1 }) : '—'
 }
 
 function formatBytes(bytes: number): string {
