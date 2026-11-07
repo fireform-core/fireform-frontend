@@ -3,21 +3,52 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 jobs:
   build:
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: macos-latest
+            asset_name: api-backend-macos
+            target_bin: bin/api-backend
+          - os: ubuntu-latest
+            asset_name: api-backend-linux
+            target_bin: bin/api-backend
+          - os: windows-latest
+            asset_name: api-backend-windows.exe
+            target_bin: bin/api-backend.exe
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - run: npm ci
+
+      - name: Fetch FireForm backend binary
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p bin
+          TAG="${GITHUB_REF_NAME}"
+          echo "Attempting to download backend asset for tag $TAG..."
+          gh release download "$TAG" --repo fireform-core/FireForm --pattern "${{ matrix.asset_name }}" --dir bin || \
+          gh release download --repo fireform-core/FireForm --pattern "${{ matrix.asset_name }}" --dir bin || \
+          echo "Warning: Could not fetch release asset from fireform-core/FireForm"
+
+          if [ -f "bin/${{ matrix.asset_name }}" ]; then
+            mv "bin/${{ matrix.asset_name }}" "${{ matrix.target_bin }}"
+            chmod +x "${{ matrix.target_bin }}" || true
+            echo "Successfully prepared ${{ matrix.target_bin }}"
+          fi
+
       - name: Build & publish
         run: npx electron-builder --publish always
         env:
