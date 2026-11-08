@@ -54,12 +54,20 @@ function startBackend(): void {
 }
 
 function createWindow(): void {
+  const iconPath = join(__dirname, '../../resources/icon.png')
   const win = new BrowserWindow({
     width: 1100,
     height: 800,
+    show: false,
+    autoHideMenuBar: true,
+    ...(existsSync(iconPath) ? { icon: iconPath } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
     },
+  })
+
+  win.on('ready-to-show', () => {
+    win.show()
   })
 
   // The renderer cancels unload (beforeunload) when Studio has unsaved work; Electron would
@@ -91,6 +99,12 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  if (process.platform === 'darwin' && app.dock) {
+    const dockIconPath = join(__dirname, '../../resources/icon.png')
+    if (existsSync(dockIconPath)) {
+      app.dock.setIcon(dockIconPath)
+    }
+  }
   startBackend()
   void ensureOllamaService()
   createWindow()
