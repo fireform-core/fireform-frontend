@@ -20,6 +20,8 @@ jobs:
             asset_name: api-backend-windows.exe
             target_bin: bin/api-backend.exe
     runs-on: ${{ matrix.os }}
+    env:
+      ELECTRON_MIRROR: 'https://npmmirror.com/mirrors/electron/'
     permissions:
       contents: write
     steps:
@@ -27,7 +29,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - run: npm ci
 
