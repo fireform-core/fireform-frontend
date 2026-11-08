@@ -3,7 +3,7 @@ export interface Template {
   name: string
   description: string
   pdf_path: string
-  fields: Record<string, any>
+  fields: Record<string, unknown>
   field_count?: number
 }
 
