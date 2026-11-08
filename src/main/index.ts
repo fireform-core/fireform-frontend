@@ -34,6 +34,7 @@ function startBackend(): void {
       ...process.env,
       FIREFORM_DESKTOP: 'true',
       FIREFORM_DATA_DIR: dataDir,
+      FIREFORM_TEMPLATE_DIR: join(dataDir, 'inputs'),
       DATABASE_URL: `sqlite:///${dbPath}`,
       LLM_SECRET_KEY_FILE: secretKeyFile,
       PORT: '8000',
