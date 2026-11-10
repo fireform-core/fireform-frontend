@@ -4,7 +4,7 @@ import type { FieldRow, Template } from '../../types'
 import { DocumentViewer } from './DocumentViewer'
 import { StudioSidebar } from './StudioSidebar'
 import { useFieldRows } from '../template-builder/hooks'
-import { useSpeechRecording } from '../fill-form/hooks'
+import { useSpeechRecording } from './hooks'
 import {
   uploadTemplatePdf,
   createTemplate,
