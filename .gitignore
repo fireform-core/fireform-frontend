@@ -9,3 +9,5 @@ coverage/
 .idea/
 .vscode/
 *.code-workspace
+bin/
+

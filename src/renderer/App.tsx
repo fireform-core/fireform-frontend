@@ -8,7 +8,7 @@ import {
   FileChartColumn,
 } from 'lucide-react'
 import { useStore, selectHasUnsavedWork } from './store'
-import { waitForBackend, fetchTemplates, fetchBackendStatus } from './lib/api'
+import { waitForBackend, fetchTemplates, fetchBackendStatus, fetchLLMModels } from './lib/api'
 import type { BackendStatus } from './lib/api'
 import { Studio } from './features/studio/Studio'
 import { TemplatesList } from './features/templates-list/TemplatesList'
@@ -71,6 +71,18 @@ export function App() {
       const { templates: loaded, activeTemplateId, setActiveTemplateId } = useStore.getState()
       if (activeTemplateId === null && loaded[0]) setActiveTemplateId(loaded[0].id)
       setReady(true)
+
+      // Onboarding: check if default desktop model (qwen2.5:3b) is provisioned
+      try {
+        const catalog = await fetchLLMModels()
+        const ollamaProvider = catalog.providers.find(p => p.provider === 'ollama')
+        const hasQwen = ollamaProvider?.models.some(m => m.name === 'qwen2.5:3b' && m.installed)
+        if (!hasQwen) {
+          void useStore.getState().startModelDownload('ollama', 'qwen2.5:3b')
+        }
+      } catch {
+        // Backend or Ollama offline; onboarding can proceed later via Settings
+      }
     })
   }, [])
 
