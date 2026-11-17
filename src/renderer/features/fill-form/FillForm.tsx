@@ -51,20 +51,26 @@ export function FillForm() {
   } = useSpeechRecording(
     text => {
       if (!text) return
+      const clean = text.replace(/\s+/g, ' ').trim()
       const base = baseTextRef.current
-      setInputText(base ? `${base} ${text}` : text)
+      const combined = base ? `${base} ${clean}` : clean
+      const normalized = combined.replace(/\s+/g, ' ').trim()
+      setInputText(normalized)
+      baseTextRef.current = normalized
     },
     {
       onInterim: interim => {
         if (!interim) return
+        const clean = interim.replace(/\s+/g, ' ').trim()
         const base = baseTextRef.current
-        setInputText(base ? `${base} ${interim}` : interim)
+        const combined = base ? `${base} ${clean}` : clean
+        setInputText(combined.replace(/\s+/g, ' ').trim())
       },
     }
   )
 
   const handleStartRecording = () => {
-    baseTextRef.current = inputText.trim()
+    baseTextRef.current = inputText.replace(/\s+/g, ' ').trim()
     void start()
   }
 

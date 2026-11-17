@@ -71,17 +71,31 @@ export function useSpeechRecording(
       audioContextRef.current = null
     }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop())
+      try {
+        streamRef.current.getTracks().forEach(t => t.stop())
+      } catch { /* ignore */ }
       streamRef.current = null
+    }
+    if (mediaRecorderRef.current) {
+      try {
+        if (mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop()
+        }
+      } catch { /* ignore */ }
+      mediaRecorderRef.current = null
     }
     if (wsRef.current) {
       try { wsRef.current.close() } catch { /* ignore */ }
       wsRef.current = null
     }
+    recordedChunksRef.current = []
+    isStreamingRef.current = false
+    isPausedRef.current = false
   }, [])
 
   const start = useCallback(async () => {
-    if (mediaRecorderRef.current || audioContextRef.current) return
+    cleanupAudio()
+
     if (!navigator.mediaDevices?.getUserMedia) {
       setSttStatus('Microphone capture not available.')
       return
@@ -123,7 +137,7 @@ export function useSpeechRecording(
       ws.onmessage = event => {
         try {
           const data = JSON.parse(event.data as string)
-          const incomingText = ((data.text ?? data.transcript ?? '') as string).trim()
+          const incomingText = ((data.text ?? data.transcript ?? '') as string).replace(/\s+/g, ' ').trim()
 
           if (data.type === 'interim') {
             if (incomingText) {
@@ -135,8 +149,8 @@ export function useSpeechRecording(
             setInterimTranscript(incomingText)
             onTranscribed(incomingText)
             setSttStatus(incomingText ? 'Transcription added.' : 'No speech detected.')
-            setSttState('idle')
             cleanupAudio()
+            setSttState('idle')
           } else if (data.type === 'error') {
             isStreamingRef.current = false
             const code = data.error_code as string
@@ -221,6 +235,7 @@ export function useSpeechRecording(
 
       if (finalReceivedRef.current) {
         cleanupAudio()
+        setSttState('idle')
         return
       }
     }
@@ -229,8 +244,6 @@ export function useSpeechRecording(
     const recorder = mediaRecorderRef.current
     const chunks = recordedChunksRef.current
     const mimeType = recorder?.mimeType || 'audio/webm'
-    mediaRecorderRef.current = null
-    recordedChunksRef.current = []
 
     cleanupAudio()
 
@@ -243,11 +256,13 @@ export function useSpeechRecording(
 
     try {
       const text = await transcribeAudio(blob)
-      onTranscribed(text)
-      setSttStatus(text ? 'Transcription added.' : 'No speech detected.')
+      const clean = (text || '').replace(/\s+/g, ' ').trim()
+      onTranscribed(clean)
+      setSttStatus(clean ? 'Transcription added.' : 'No speech detected.')
     } catch (e: unknown) {
       setSttStatus(`Transcription failed: ${(e as Error).message}`)
     }
+    cleanupAudio()
     setSttState('idle')
   }, [cleanupAudio, onTranscribed])
 

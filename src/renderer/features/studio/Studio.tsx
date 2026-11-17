@@ -106,16 +106,20 @@ export function Studio() {
   } = useSpeechRecording(
     transcript => {
       if (transcript) {
+        const clean = transcript.replace(/\s+/g, ' ').trim()
         const base = baseNarrativeRef.current
-        setNarrativeText(base ? `${base}\n${transcript}` : transcript)
+        const combined = base ? `${base}\n${clean}` : clean
+        setNarrativeText(combined)
+        baseNarrativeRef.current = combined
         setStatusMessage({ text: 'Voice transcript added to narrative.', type: 'success' })
       }
     },
     {
       onInterim: interim => {
         if (interim) {
+          const clean = interim.replace(/\s+/g, ' ').trim()
           const base = baseNarrativeRef.current
-          setNarrativeText(base ? `${base}\n${interim}` : interim)
+          setNarrativeText(base ? `${base}\n${clean}` : clean)
         }
       },
     }
