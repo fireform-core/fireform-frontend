@@ -126,17 +126,18 @@ export function useSpeechRecording(
       ws.onmessage = event => {
         try {
           const data = JSON.parse(event.data as string)
+          const incomingText = ((data.text ?? data.transcript ?? '') as string).trim()
+          const incomingTrans = ((data.translation ?? '') as string).trim()
+
           if (data.type === 'interim') {
-            if (typeof data.text === 'string') setInterimTranscript(data.text)
-            if (typeof data.translation === 'string') setInterimTranslation(data.translation)
+            if (incomingText) setInterimTranscript(incomingText)
+            if (incomingTrans) setInterimTranslation(incomingTrans)
           } else if (data.type === 'final') {
             finalReceivedRef.current = true
-            const finalTxt = ((data.text as string) || '').trim()
-            const finalTrans = ((data.translation as string) || '').trim()
-            setInterimTranscript(finalTxt)
-            setInterimTranslation(finalTrans)
-            const resultText = liveTranslateRef.current && finalTrans ? finalTrans : finalTxt
-            onTranscribed(resultText, finalTrans)
+            setInterimTranscript(incomingText)
+            setInterimTranslation(incomingTrans)
+            const resultText = liveTranslateRef.current && incomingTrans ? incomingTrans : incomingText
+            onTranscribed(resultText, incomingTrans)
             setSttStatus(resultText ? 'Transcription added.' : 'No speech detected.')
             setSttState('idle')
             cleanupAudio()
