@@ -10,6 +10,8 @@ jobs:
   lint:
     name: Lint & Typecheck
     runs-on: ubuntu-latest
+    env:
+      ELECTRON_MIRROR: 'https://npmmirror.com/mirrors/electron/'
 
     steps:
       - name: Checkout code
@@ -18,7 +20,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install dependencies

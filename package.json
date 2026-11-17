@@ -1,7 +1,10 @@
 {
   "name": "fireform-frontend",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "FireForm — report once, file everywhere",
+  "author": "FireForm Core",
+  "license": "MIT",
+  "homepage": "https://github.com/fireform-core/FireForm",
   "repository": "fireform-core/fireform-frontend",
   "main": "out/main/index.js",
   "scripts": {

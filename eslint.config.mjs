@@ -28,12 +28,12 @@ export default [
       ...tsPlugin.configs['recommended'].rules,
 
       // Upgrade a few to errors for real safety
-      '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': ['warn', { prefer: 'type-imports' }],
 
-      // Keep it pragmatic — don't ban non-null assertions outright
-      '@typescript-eslint/no-non-null-assertion': 'warn',
+      // Pragmatic — allow intentional any and non-null assertions
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
     },
   },
 
@@ -47,6 +47,14 @@ export default [
     rules: {
       ...hooksPlugin.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+    },
+  },
+
+  // ── UI primitives (shadcn exports variants alongside components) ──────────
+  {
+    files: ['src/renderer/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
 ]
