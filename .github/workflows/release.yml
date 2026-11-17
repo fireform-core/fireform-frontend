@@ -51,6 +51,9 @@ jobs:
             echo "Successfully prepared ${{ matrix.target_bin }}"
           fi
 
+      - name: Build renderer and main bundles
+        run: npm run build
+
       - name: Build & publish
         run: npx electron-builder --publish always
         env:
