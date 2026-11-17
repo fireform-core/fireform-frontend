@@ -73,8 +73,6 @@ interface ProfileState {
 
 export function Settings() {
   const refreshLLMModels = useStore(state => state.refreshLLMModels)
-  const liveTranslate = useStore(state => state.liveTranslate)
-  const setLiveTranslate = useStore(state => state.setLiveTranslate)
   const [providersOpen, setProvidersOpen] = useState(false)
   const [initialProvider, setInitialProvider] = useState<LLMProviderName>('ollama')
   const [catalogError, setCatalogError] = useState('')
@@ -403,25 +401,8 @@ export function Settings() {
         </div>
 
         <div>
-          <SectionHeader icon={Globe} title="Language & Translation" />
+          <SectionHeader icon={Globe} title="Language & Region" />
           <div className="bg-white border border-zinc-200 rounded-xl px-5">
-            <SettingRow
-              label="Live English translation"
-              description="Automatically translate speech to English in real time while recording voice notes."
-            >
-              <button
-                type="button"
-                onClick={() => setLiveTranslate(!liveTranslate)}
-                className={cn(
-                  'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer',
-                  liveTranslate
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                    : 'border-zinc-200 bg-zinc-50 text-zinc-500'
-                )}
-              >
-                {liveTranslate ? 'On' : 'Off'}
-              </button>
-            </SettingRow>
             <SettingRow
               label="UI language"
               description="Change the language used across the FireForm interface."

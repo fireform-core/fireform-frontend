@@ -18,8 +18,6 @@ import {
   loadPinnedLLMModels,
   savePinnedLLMModels,
   saveSelectedLLM,
-  loadLiveTranslate,
-  saveLiveTranslate,
   type PinnedLLMModels,
 } from '../lib/storage'
 
@@ -99,7 +97,6 @@ interface AppStore {
   modelDownloadController: AbortController | null
   notification: AppNotification | null
   activeReport: ActiveReport | null
-  liveTranslate: boolean
 
   setTemplates: (templates: Template[]) => void
   upsertTemplate: (template: Template) => void
@@ -123,7 +120,6 @@ interface AppStore {
   notify: (notification: AppNotification) => void
   clearNotification: () => void
   setActiveReport: (report: ActiveReport | null) => void
-  setLiveTranslate: (enabled: boolean) => void
 }
 
 // Unsaved changes compared with the saved template (or anything entered for a new one)
@@ -157,12 +153,6 @@ export const useStore = create<AppStore>((set, get) => ({
   modelDownloadController: null,
   notification: null,
   activeReport: null,
-  liveTranslate: loadLiveTranslate(),
-
-  setLiveTranslate: (enabled: boolean) => {
-    saveLiveTranslate(enabled)
-    set({ liveTranslate: enabled })
-  },
 
   setTemplates: (templates) => {
     saveTemplates(templates)

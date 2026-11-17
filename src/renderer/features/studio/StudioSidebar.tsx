@@ -47,9 +47,6 @@ interface StudioSidebarProps {
   onNarrativeChange: (text: string) => void
   isRecording: boolean
   isTranscribing: boolean
-  interimTranscript?: string
-  interimTranslation?: string
-  liveTranslateEnabled?: boolean
   onToggleRecording: () => void
 
   onFillForm: () => void
@@ -83,9 +80,6 @@ export function StudioSidebar({
   onNarrativeChange,
   isRecording,
   isTranscribing,
-  interimTranscript,
-  interimTranslation,
-  liveTranslateEnabled,
   onToggleRecording,
   onFillForm,
   isFilling,
@@ -283,20 +277,6 @@ export function StudioSidebar({
                     )}
                   </button>
                 </div>
-
-                {/* Live streaming preview */}
-                {(isRecording || isTranscribing) && interimTranscript && (
-                  <div className="rounded-md border border-zinc-200 bg-zinc-50 p-2 text-[11px] text-zinc-700 space-y-1" aria-live="polite">
-                    <p className="font-medium text-zinc-500 uppercase tracking-wide text-[10px]">Live transcript</p>
-                    <p>{interimTranscript}</p>
-                    {liveTranslateEnabled && interimTranslation && (
-                      <>
-                        <p className="font-medium text-zinc-500 uppercase tracking-wide text-[10px] pt-1">Live EN translation</p>
-                        <p className="italic">{interimTranslation}</p>
-                      </>
-                    )}
-                  </div>
-                )}
 
                 {/* Assistant Tools */}
                 <div className="flex items-center gap-1.5">

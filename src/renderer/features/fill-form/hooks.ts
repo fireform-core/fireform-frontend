@@ -1,11 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { getTranscribeWsUrl, transcribeAudio } from '../../lib/api'
-import { useStore } from '../../store'
 
 export type SttState = 'idle' | 'recording' | 'paused' | 'transcribing'
 
 interface UseSpeechRecordingOptions {
-  initialTranslate?: boolean
+  onInterim?: (interimText: string) => void
 }
 
 function downsampleAndConvertToPCM(
@@ -40,21 +39,17 @@ function downsampleAndConvertToPCM(
 }
 
 export function useSpeechRecording(
-  onTranscribed: (text: string, translation?: string) => void,
+  onTranscribed: (text: string) => void,
   options?: UseSpeechRecordingOptions
 ) {
-  const storeLiveTranslate = useStore(state => state.liveTranslate)
-  const setLiveTranslate = useStore(state => state.setLiveTranslate)
   const [sttState, setSttState] = useState<SttState>('idle')
   const [sttStatus, setSttStatus] = useState('')
   const [interimTranscript, setInterimTranscript] = useState('')
-  const [interimTranslation, setInterimTranslation] = useState('')
 
-  const liveTranslateEnabled = options?.initialTranslate ?? storeLiveTranslate
-  const liveTranslateRef = useRef(liveTranslateEnabled)
+  const onInterimRef = useRef(options?.onInterim)
   useEffect(() => {
-    liveTranslateRef.current = liveTranslateEnabled
-  }, [liveTranslateEnabled])
+    onInterimRef.current = options?.onInterim
+  }, [options?.onInterim])
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
@@ -102,7 +97,6 @@ export function useSpeechRecording(
     }
 
     setInterimTranscript('')
-    setInterimTranslation('')
     recordedChunksRef.current = []
     finalReceivedRef.current = false
     isPausedRef.current = false
@@ -119,7 +113,7 @@ export function useSpeechRecording(
     } catch { /* MediaRecorder unavailable */ }
 
     // 2. Open WebSocket for live streaming
-    const wsUrl = getTranscribeWsUrl({ translate: liveTranslateRef.current })
+    const wsUrl = getTranscribeWsUrl({ translate: false })
     try {
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
@@ -130,18 +124,17 @@ export function useSpeechRecording(
         try {
           const data = JSON.parse(event.data as string)
           const incomingText = ((data.text ?? data.transcript ?? '') as string).trim()
-          const incomingTrans = ((data.translation ?? '') as string).trim()
 
           if (data.type === 'interim') {
-            if (incomingText) setInterimTranscript(incomingText)
-            if (incomingTrans) setInterimTranslation(incomingTrans)
+            if (incomingText) {
+              setInterimTranscript(incomingText)
+              onInterimRef.current?.(incomingText)
+            }
           } else if (data.type === 'final') {
             finalReceivedRef.current = true
             setInterimTranscript(incomingText)
-            setInterimTranslation(incomingTrans)
-            const resultText = liveTranslateRef.current && incomingTrans ? incomingTrans : incomingText
-            onTranscribed(resultText, incomingTrans)
-            setSttStatus(resultText ? 'Transcription added.' : 'No speech detected.')
+            onTranscribed(incomingText)
+            setSttStatus(incomingText ? 'Transcription added.' : 'No speech detected.')
             setSttState('idle')
             cleanupAudio()
           } else if (data.type === 'error') {
@@ -264,9 +257,6 @@ export function useSpeechRecording(
     sttState,
     sttStatus,
     interimTranscript,
-    interimTranslation,
-    liveTranslateEnabled,
-    setLiveTranslateEnabled: setLiveTranslate,
     start,
     togglePause,
     stop,

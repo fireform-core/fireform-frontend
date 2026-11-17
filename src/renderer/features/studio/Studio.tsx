@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useStore } from '../../store'
 import type { FieldRow, Template } from '../../types'
 import { DocumentViewer } from './DocumentViewer'
@@ -96,20 +96,35 @@ export function Studio() {
   }
 
   // Hook for voice transcription
+  const baseNarrativeRef = useRef('')
+
   const {
     sttState,
     sttStatus,
-    interimTranscript,
-    interimTranslation,
-    liveTranslateEnabled,
-    start: startRecording,
+    start: startRecordingRaw,
     stop: stopRecording,
-  } = useSpeechRecording(transcript => {
-    if (transcript) {
-      setNarrativeText((prev: string) => (prev ? `${prev}\n${transcript}` : transcript))
-      setStatusMessage({ text: 'Voice transcript added to narrative.', type: 'success' })
+  } = useSpeechRecording(
+    transcript => {
+      if (transcript) {
+        const base = baseNarrativeRef.current
+        setNarrativeText(base ? `${base}\n${transcript}` : transcript)
+        setStatusMessage({ text: 'Voice transcript added to narrative.', type: 'success' })
+      }
+    },
+    {
+      onInterim: interim => {
+        if (interim) {
+          const base = baseNarrativeRef.current
+          setNarrativeText(base ? `${base}\n${interim}` : interim)
+        }
+      },
     }
-  })
+  )
+
+  const startRecording = () => {
+    baseNarrativeRef.current = narrativeText.trim()
+    void startRecordingRaw()
+  }
 
   // Surface recorder progress and failures (permission denied, no speech, ...) in the status banner
   useEffect(() => {
@@ -465,9 +480,6 @@ export function Studio() {
           onNarrativeChange={setNarrativeText}
           isRecording={sttState === 'recording'}
           isTranscribing={sttState === 'transcribing'}
-          interimTranscript={interimTranscript}
-          interimTranslation={interimTranslation}
-          liveTranslateEnabled={liveTranslateEnabled}
           onToggleRecording={() => {
             if (sttState === 'recording') stopRecording()
             else startRecording()

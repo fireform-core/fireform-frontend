@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useStore } from '../../store'
 import { useSpeechRecording } from './hooks'
 import { fillTemplate } from '../../lib/api'
@@ -40,19 +40,33 @@ export function FillForm() {
     setIsWeatherOpen(true)
   }
 
+  const baseTextRef = useRef('')
+
   const {
     sttState,
     sttStatus,
-    interimTranscript,
-    interimTranslation,
-    liveTranslateEnabled,
     start,
     togglePause,
     stop,
-  } = useSpeechRecording((text, _translation) => {
-    if (!text) return
-    setInputText(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))
-  })
+  } = useSpeechRecording(
+    text => {
+      if (!text) return
+      const base = baseTextRef.current
+      setInputText(base ? `${base} ${text}` : text)
+    },
+    {
+      onInterim: interim => {
+        if (!interim) return
+        const base = baseTextRef.current
+        setInputText(base ? `${base} ${interim}` : interim)
+      },
+    }
+  )
+
+  const handleStartRecording = () => {
+    baseTextRef.current = inputText.trim()
+    void start()
+  }
 
   const count = selectedFillIds.length
 
@@ -143,7 +157,7 @@ export function FillForm() {
             type="button"
             className="secondary-btn stt-btn"
             disabled={isRecording || isPaused || isTranscribing}
-            onClick={start}
+            onClick={handleStartRecording}
           >
             <span className="stt-dot" aria-hidden="true" />
             Record
@@ -168,19 +182,6 @@ export function FillForm() {
             {sttStatus}
           </span>
         </div>
-
-        {(isRecording || isPaused || isTranscribing) && interimTranscript && (
-          <div className="stt-interim-block" aria-live="polite" aria-label="Live transcript preview">
-            <p className="stt-interim-label">Live transcript</p>
-            <p className="stt-interim-text">{interimTranscript}</p>
-            {liveTranslateEnabled && interimTranslation && (
-              <>
-                <p className="stt-interim-label">Live translation (EN)</p>
-                <p className="stt-interim-text stt-interim-translation">{interimTranslation}</p>
-              </>
-            )}
-          </div>
-        )}
 
         <textarea
           id="inputText"
