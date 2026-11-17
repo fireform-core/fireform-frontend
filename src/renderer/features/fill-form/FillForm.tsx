@@ -40,7 +40,17 @@ export function FillForm() {
     setIsWeatherOpen(true)
   }
 
-  const { sttState, sttStatus, start, togglePause, stop } = useSpeechRecording(text => {
+  const {
+    sttState,
+    sttStatus,
+    interimTranscript,
+    interimTranslation,
+    liveTranslateEnabled,
+    setLiveTranslateEnabled,
+    start,
+    togglePause,
+    stop,
+  } = useSpeechRecording((text, _translation) => {
     if (!text) return
     setInputText(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))
   })
@@ -155,10 +165,31 @@ export function FillForm() {
           >
             Stop &amp; Transcribe
           </button>
+          <label className="stt-toggle-label" title="Stream live English translation alongside transcription">
+            <input
+              type="checkbox"
+              checked={liveTranslateEnabled}
+              onChange={e => setLiveTranslateEnabled(e.target.checked)}
+            />
+            {' '}Live EN translation
+          </label>
           <span className="stt-status" aria-live="polite">
             {sttStatus}
           </span>
         </div>
+
+        {(isRecording || isPaused || isTranscribing) && interimTranscript && (
+          <div className="stt-interim-block" aria-live="polite" aria-label="Live transcript preview">
+            <p className="stt-interim-label">Live transcript</p>
+            <p className="stt-interim-text">{interimTranscript}</p>
+            {liveTranslateEnabled && interimTranslation && (
+              <>
+                <p className="stt-interim-label">Live translation (EN)</p>
+                <p className="stt-interim-text stt-interim-translation">{interimTranslation}</p>
+              </>
+            )}
+          </div>
+        )}
 
         <textarea
           id="inputText"

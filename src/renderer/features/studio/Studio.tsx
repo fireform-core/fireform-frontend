@@ -96,7 +96,16 @@ export function Studio() {
   }
 
   // Hook for voice transcription
-  const { sttState, sttStatus, start: startRecording, stop: stopRecording } = useSpeechRecording(transcript => {
+  const {
+    sttState,
+    sttStatus,
+    interimTranscript,
+    interimTranslation,
+    liveTranslateEnabled,
+    setLiveTranslateEnabled,
+    start: startRecording,
+    stop: stopRecording,
+  } = useSpeechRecording(transcript => {
     if (transcript) {
       setNarrativeText((prev: string) => (prev ? `${prev}\n${transcript}` : transcript))
       setStatusMessage({ text: 'Voice transcript added to narrative.', type: 'success' })
@@ -457,6 +466,10 @@ export function Studio() {
           onNarrativeChange={setNarrativeText}
           isRecording={sttState === 'recording'}
           isTranscribing={sttState === 'transcribing'}
+          interimTranscript={interimTranscript}
+          interimTranslation={interimTranslation}
+          liveTranslateEnabled={liveTranslateEnabled}
+          onLiveTranslateChange={setLiveTranslateEnabled}
           onToggleRecording={() => {
             if (sttState === 'recording') stopRecording()
             else startRecording()

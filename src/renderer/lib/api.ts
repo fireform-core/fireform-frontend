@@ -460,6 +460,15 @@ export async function fillTemplate(payload: {
   return body as Record<string, unknown>
 }
 
+export function getTranscribeWsUrl(options?: { language?: string; translate?: boolean }): string {
+  const wsBase = API_BASE_URL.replace(/^http/, 'ws')
+  const params = new URLSearchParams()
+  if (options?.language) params.set('language', options.language)
+  if (options?.translate !== undefined) params.set('translate', String(options.translate))
+  const qs = params.toString()
+  return `${wsBase}/ws/transcribe${qs ? `?${qs}` : ''}`
+}
+
 export async function transcribeAudio(blob: Blob): Promise<string> {
   const ext = (blob.type || '').split('/')[1]?.split(';')[0]?.trim() || 'webm'
   const formData = new FormData()

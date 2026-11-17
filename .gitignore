@@ -4,6 +4,8 @@
 dist/
 build/
 out/
+bin/
+release/
 coverage/
 .DS_Store
 .idea/
