@@ -50,7 +50,6 @@ interface StudioSidebarProps {
   interimTranscript?: string
   interimTranslation?: string
   liveTranslateEnabled?: boolean
-  onLiveTranslateChange?: (enabled: boolean) => void
   onToggleRecording: () => void
 
   onFillForm: () => void
@@ -87,7 +86,6 @@ export function StudioSidebar({
   interimTranscript,
   interimTranslation,
   liveTranslateEnabled,
-  onLiveTranslateChange,
   onToggleRecording,
   onFillForm,
   isFilling,
@@ -285,19 +283,6 @@ export function StudioSidebar({
                     )}
                   </button>
                 </div>
-
-                {/* Live translation toggle */}
-                {onLiveTranslateChange && (
-                  <label className="flex items-center gap-1.5 text-[11px] text-zinc-600 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      className="w-3 h-3 accent-zinc-800"
-                      checked={liveTranslateEnabled ?? true}
-                      onChange={e => onLiveTranslateChange(e.target.checked)}
-                    />
-                    Live EN translation
-                  </label>
-                )}
 
                 {/* Live streaming preview */}
                 {(isRecording || isTranscribing) && interimTranscript && (

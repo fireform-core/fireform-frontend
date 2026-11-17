@@ -46,7 +46,6 @@ export function FillForm() {
     interimTranscript,
     interimTranslation,
     liveTranslateEnabled,
-    setLiveTranslateEnabled,
     start,
     togglePause,
     stop,
@@ -165,14 +164,6 @@ export function FillForm() {
           >
             Stop &amp; Transcribe
           </button>
-          <label className="stt-toggle-label" title="Stream live English translation alongside transcription">
-            <input
-              type="checkbox"
-              checked={liveTranslateEnabled}
-              onChange={e => setLiveTranslateEnabled(e.target.checked)}
-            />
-            {' '}Live EN translation
-          </label>
           <span className="stt-status" aria-live="polite">
             {sttStatus}
           </span>

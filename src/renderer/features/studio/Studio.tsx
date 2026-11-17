@@ -102,7 +102,6 @@ export function Studio() {
     interimTranscript,
     interimTranslation,
     liveTranslateEnabled,
-    setLiveTranslateEnabled,
     start: startRecording,
     stop: stopRecording,
   } = useSpeechRecording(transcript => {
@@ -469,7 +468,6 @@ export function Studio() {
           interimTranscript={interimTranscript}
           interimTranslation={interimTranslation}
           liveTranslateEnabled={liveTranslateEnabled}
-          onLiveTranslateChange={setLiveTranslateEnabled}
           onToggleRecording={() => {
             if (sttState === 'recording') stopRecording()
             else startRecording()

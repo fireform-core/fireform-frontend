@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { getTranscribeWsUrl, transcribeAudio } from '../../lib/api'
+import { useStore } from '../../store'
 
 export type SttState = 'idle' | 'recording' | 'paused' | 'transcribing'
 
@@ -42,12 +43,14 @@ export function useSpeechRecording(
   onTranscribed: (text: string, translation?: string) => void,
   options?: UseSpeechRecordingOptions
 ) {
+  const storeLiveTranslate = useStore(state => state.liveTranslate)
+  const setLiveTranslate = useStore(state => state.setLiveTranslate)
   const [sttState, setSttState] = useState<SttState>('idle')
   const [sttStatus, setSttStatus] = useState('')
   const [interimTranscript, setInterimTranscript] = useState('')
   const [interimTranslation, setInterimTranslation] = useState('')
-  const [liveTranslateEnabled, setLiveTranslateEnabled] = useState(options?.initialTranslate ?? true)
 
+  const liveTranslateEnabled = options?.initialTranslate ?? storeLiveTranslate
   const liveTranslateRef = useRef(liveTranslateEnabled)
   useEffect(() => {
     liveTranslateRef.current = liveTranslateEnabled
@@ -263,7 +266,7 @@ export function useSpeechRecording(
     interimTranscript,
     interimTranslation,
     liveTranslateEnabled,
-    setLiveTranslateEnabled,
+    setLiveTranslateEnabled: setLiveTranslate,
     start,
     togglePause,
     stop,

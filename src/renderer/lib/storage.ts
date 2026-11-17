@@ -6,6 +6,24 @@ const LAST_OUTPUT_KEY = 'fireform.lastOutputPath.v1'
 const TEMPLATES_VIEW_KEY = 'fireform.templatesView.v1'
 const SELECTED_LLM_KEY = 'fireform.selectedLLM.v1'
 const PINNED_LLM_MODELS_KEY = 'fireform.pinnedLLMModels.v1'
+const LIVE_TRANSLATE_KEY = 'fireform.liveTranslate.v1'
+
+export function loadLiveTranslate(): boolean {
+  try {
+    const val = localStorage.getItem(LIVE_TRANSLATE_KEY)
+    return val !== null ? val === 'true' : true
+  } catch {
+    return true
+  }
+}
+
+export function saveLiveTranslate(enabled: boolean): void {
+  try {
+    localStorage.setItem(LIVE_TRANSLATE_KEY, String(enabled))
+  } catch {
+    // Storage may be unavailable in restricted renderer contexts.
+  }
+}
 
 export type PinnedLLMModels = Partial<Record<LLMProviderName, string[]>>
 
