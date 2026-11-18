@@ -1,13 +1,15 @@
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, BrowserWindow, dialog, Menu, shell } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync } from 'fs'
 import type { ChildProcess } from 'child_process'
 import { spawn } from 'child_process'
-import { ensureOllamaService } from './ollama'
+import { ensureOllamaService, stopOwnedOllama } from './ollama'
+import { captureAppLog, getLogDir, openLogFile } from './logs'
 
 app.setName('FireForm')
 
 let backendProcess: ChildProcess | null = null
+let quitting = false
 
 function startBackend(): void {
   const ext = process.platform === 'win32' ? '.exe' : ''
@@ -41,16 +43,69 @@ function startBackend(): void {
     }
 
     console.log(`Starting FireForm API backend from ${backendPath}...`)
-    backendProcess = spawn(backendPath, [], { env, stdio: 'ignore' })
+    // The backend's own output is the only record of why it failed to start, so keep it.
+    const logFd = openLogFile('backend.log')
+    backendProcess = spawn(backendPath, [], {
+      env,
+      stdio: logFd === null ? 'ignore' : ['ignore', logFd, logFd],
+    })
     backendProcess.on('error', err => {
       console.error('Failed to start backend process.', err)
+      reportBackendFailure('FireForm could not start its backend.')
     })
     backendProcess.on('exit', (code, signal) => {
       console.log(`Backend process exited with code ${code}, signal ${signal}`)
+      if (!quitting) reportBackendFailure('The FireForm backend stopped unexpectedly.')
     })
   } else {
     console.log('No bundled binary found; assuming backend running via Docker or local uvicorn.')
   }
+}
+
+function reportBackendFailure(message: string): void {
+  const choice = dialog.showMessageBoxSync({
+    type: 'error',
+    buttons: ['Open Logs Folder', 'Close'],
+    defaultId: 0,
+    cancelId: 1,
+    message,
+    detail:
+      'Quit and reopen FireForm. If it keeps happening, something else may be using port 8000. ' +
+      'The logs folder has backend.log and app.log, which show what went wrong.',
+  })
+  if (choice === 0) void shell.openPath(getLogDir())
+}
+
+// Adds Help > Open Logs Folder to the standard menus.
+function buildMenu(): void {
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
+      { role: 'fileMenu' },
+      { role: 'editMenu' },
+      { role: 'viewMenu' },
+      { role: 'windowMenu' },
+      {
+        role: 'help',
+        submenu: [{ label: 'Open Logs Folder', click: () => void shell.openPath(getLogDir()) }],
+      },
+    ])
+  )
+}
+
+async function startOllama(): Promise<void> {
+  if (await ensureOllamaService()) return
+  const { response } = await dialog.showMessageBox({
+    type: 'warning',
+    buttons: ['Get Ollama', 'Not now'],
+    defaultId: 0,
+    cancelId: 1,
+    message: 'FireForm needs Ollama to fill forms.',
+    detail:
+      'Ollama runs the AI model on this computer, and FireForm could not find or start it. ' +
+      'Install it from ollama.com, then reopen FireForm. You can still browse templates without it.',
+  })
+  if (response === 0) void shell.openExternal('https://ollama.com/download')
 }
 
 function createWindow(): void {
@@ -99,6 +154,8 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  captureAppLog()
+  buildMenu()
   if (process.platform === 'darwin' && app.dock) {
     const dockIconPath = join(__dirname, '../../resources/icon.png')
     if (existsSync(dockIconPath)) {
@@ -106,8 +163,12 @@ app.whenReady().then(async () => {
     }
   }
   startBackend()
-  void ensureOllamaService()
+  void startOllama()
   createWindow()
+})
+
+app.on('before-quit', () => {
+  quitting = true
 })
 
 app.on('will-quit', () => {
@@ -123,6 +184,7 @@ app.on('will-quit', () => {
     }
     backendProcess = null
   }
+  stopOwnedOllama()
 })
 
 app.on('window-all-closed', () => {
