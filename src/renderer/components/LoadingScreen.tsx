@@ -21,17 +21,13 @@ const STEPS: Step[] = [
   },
 ]
 
-// The bundled backend unpacks itself on launch and takes 20-30 s to answer on a normal start,
-// so only call it slow well past that.
-const SLOW_AFTER_MS = 60000
-
 export function LoadingScreen() {
   const [elapsed, setElapsed] = useState(0)
   const [slow, setSlow] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => setElapsed(e => e + 500), 500)
-    const slowTimer = setTimeout(() => setSlow(true), SLOW_AFTER_MS)
+    const slowTimer = setTimeout(() => setSlow(true), 14000)
     return () => {
       clearInterval(interval)
       clearTimeout(slowTimer)
@@ -48,7 +44,7 @@ export function LoadingScreen() {
       {/* Title */}
       <div className="text-center">
         <h1 className="text-base font-bold text-zinc-900">Setting up FireForm</h1>
-        <p className="text-xs text-zinc-500 mt-1">Starting local services. This can take up to half a minute.</p>
+        <p className="text-xs text-zinc-500 mt-1">Starting local services — this only takes a moment</p>
       </div>
 
       {/* Steps */}
@@ -89,10 +85,9 @@ export function LoadingScreen() {
       {/* Slow warning */}
       {slow && (
         <div className="max-w-xs px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-xs text-center leading-relaxed">
-          FireForm is taking longer than usual to start. Quit and reopen the app; if it still
-          doesn't load, something else may be using port 8000. Developers running the backend in
-          Docker: start it with <span className="font-mono">make fireform</span>. Logs are under
-          Help → Open Logs Folder.
+          Taking longer than expected. If you're using Docker, run{' '}
+          <span className="font-mono">make fireform</span>. For the desktop app,
+          check that the binary started successfully.
         </div>
       )}
     </div>

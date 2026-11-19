@@ -1,14 +1,10 @@
 import { existsSync, createWriteStream } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import type { ChildProcess } from 'child_process'
 import { spawn, execSync } from 'child_process'
 import { get as httpGet } from 'https'
 
 const OLLAMA_HOST = 'http://127.0.0.1:11434'
-
-// Set only when this app launched `ollama serve`; an Ollama the user was already running is theirs.
-let ownedOllama: ChildProcess | null = null
 
 export async function isOllamaReachable(): Promise<boolean> {
   try {
@@ -77,29 +73,9 @@ export async function startLocalOllama(): Promise<boolean> {
   if (!exe) return false
 
   console.log(`Starting local Ollama service: ${exe} serve`)
-  const child = spawn(exe, ['serve'], { stdio: 'ignore' })
-  child.on('error', err => console.error('Failed to start Ollama.', err))
-  child.on('exit', () => {
-    if (ownedOllama === child) ownedOllama = null
-  })
-  ownedOllama = child
+  const child = spawn(exe, ['serve'], { detached: true, stdio: 'ignore' })
+  child.unref()
   return await waitForOllama(15000)
-}
-
-/** Stop the Ollama server this app started. Does nothing if Ollama was already running. */
-export function stopOwnedOllama(): void {
-  const child = ownedOllama
-  ownedOllama = null
-  if (!child || !child.pid || child.exitCode !== null) return
-  if (process.platform === 'win32') {
-    try {
-      spawn('taskkill', ['/pid', child.pid.toString(), '/T', '/F'])
-    } catch {
-      child.kill()
-    }
-  } else {
-    child.kill('SIGTERM')
-  }
 }
 
 function downloadFile(url: string, destPath: string): Promise<void> {
@@ -163,29 +139,27 @@ export async function installOllamaSilently(): Promise<boolean> {
   return false
 }
 
-/** Resolves true once Ollama answers, false if it could not be started or installed. */
-export async function ensureOllamaService(): Promise<boolean> {
+export async function ensureOllamaService(): Promise<void> {
   if (await isOllamaReachable()) {
     console.log('Ollama is already running and ready.')
-    return true
+    return
   }
 
   console.log('Ollama not running, searching for local executable...')
   const started = await startLocalOllama()
   if (started) {
     console.log('Ollama successfully started in background.')
-    return true
+    return
   }
 
   console.log('Ollama not found locally, executing silent install...')
   const installed = await installOllamaSilently()
   if (installed) {
     console.log('Ollama installed and running.')
-    return true
+  } else {
+    console.warn(
+      'Could not auto-start or silently install Ollama. Local LLM will be unavailable until Ollama is started.'
+    )
   }
-  console.warn(
-    'Could not auto-start or silently install Ollama. Local LLM will be unavailable until Ollama is started.'
-  )
-  return false
 }
 

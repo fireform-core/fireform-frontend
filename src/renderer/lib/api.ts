@@ -71,21 +71,6 @@ export async function fetchBackendStatus(): Promise<{ status: BackendStatus; det
   }
 }
 
-// Voice needs a Whisper service behind the backend. The desktop build has none: there /health
-// reports Whisper as disabled, or as unhealthy on backends that still probe for it.
-export async function fetchVoiceAvailable(): Promise<boolean> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/health`, { signal: AbortSignal.timeout(10000) })
-    const body = (await parseJsonResponse(response)) as Record<string, unknown>
-    const components = (body['components'] || {}) as Record<string, { status?: string; detail?: string }>
-    const whisper = components['whisper']
-    if (!whisper) return true
-    return whisper.status === 'healthy' && !/disabled/i.test(whisper.detail || '')
-  } catch {
-    return true
-  }
-}
-
 export async function fetchTemplates(): Promise<Template[]> {
   const response = await fetch(`${API_BASE_URL}/templates`)
   const body = await parseJsonResponse(response)

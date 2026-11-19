@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { fetchVoiceAvailable, getTranscribeWsUrl, transcribeAudio } from '../../lib/api'
+import { getTranscribeWsUrl, transcribeAudio } from '../../lib/api'
 
 export type SttState = 'idle' | 'recording' | 'paused' | 'transcribing'
 
@@ -98,12 +98,6 @@ export function useSpeechRecording(
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setSttStatus('Microphone capture not available.')
-      return
-    }
-
-    // Check before asking for the microphone, so nobody records a memo that cannot be transcribed.
-    if (!(await fetchVoiceAvailable())) {
-      setSttStatus('Voice input is not available here yet. Type the narrative instead.')
       return
     }
 
