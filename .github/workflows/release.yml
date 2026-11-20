@@ -41,7 +41,9 @@ jobs:
           mkdir -p bin
           TAG="${GITHUB_REF_NAME}"
           echo "Attempting to download backend asset for tag $TAG..."
+          gh release download "$TAG" --repo fireform-core/fireform-backend --pattern "${{ matrix.asset_name }}" --dir bin || \
           gh release download "$TAG" --repo fireform-core/FireForm --pattern "${{ matrix.asset_name }}" --dir bin || \
+          gh release download --repo fireform-core/fireform-backend --pattern "${{ matrix.asset_name }}" --dir bin || \
           gh release download --repo fireform-core/FireForm --pattern "${{ matrix.asset_name }}" --dir bin || \
           echo "Warning: Could not fetch release asset from fireform-core/FireForm"
 
