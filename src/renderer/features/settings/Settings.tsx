@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { CheckCircle2, Cpu, Globe, Loader2, Plus, Save, Sparkles, Trash2, User } from 'lucide-react'
+import { CheckCircle2, Cpu, Globe, Loader2, Plus, Save, Scale, Sparkles, Trash2, User } from 'lucide-react'
+import { LegalSection } from './LegalSection'
 import { ModelSelector } from '../../components/ModelSelector'
 import { Button } from '../../components/ui/button'
 import {
@@ -434,6 +435,11 @@ export function Settings() {
               </button>
             </SettingRow>
           </div>
+        </div>
+
+        <div>
+          <SectionHeader icon={Scale} title="Legal" />
+          <LegalSection />
         </div>
       </div>
       {providersOpen && (

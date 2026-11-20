@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, BrowserWindow, dialog, shell } from 'electron'
 import { join } from 'path'
 import type { ChildProcess } from 'child_process';
 import { spawn } from 'child_process'
@@ -46,6 +46,56 @@ function createWindow(): void {
       callback(permission === 'media')
     }
   )
+
+  // Control how window.open(url, '_blank') calls from the renderer are handled.
+  //
+  // Three cases:
+  //   1. Approved HTTPS origins used by the Legal settings page
+  //      → open in the system browser via shell.openExternal; deny the child window.
+  //   2. blob: URLs and http://localhost (PDF pop-outs in DocumentViewer / PdfPreviewer)
+  //      → allow as a child BrowserWindow (existing behaviour, unchanged).
+  //   3. Everything else (unexpected schemes or origins)
+  //      → deny silently.
+  //
+  // No contextBridge IPC is needed: the renderer still calls window.open() unchanged;
+  // routing is decided entirely here in the main process.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    let parsed: URL
+    try {
+      parsed = new URL(url)
+    } catch {
+      return { action: 'deny' }
+    }
+
+    if (parsed.protocol === 'https:') {
+      const approvedHosts = [
+        'github.com',
+        'www.github.com',
+        'contributor-covenant.org',
+        'www.contributor-covenant.org',
+      ]
+      if (approvedHosts.includes(parsed.hostname)) {
+        shell.openExternal(url).catch(err => {
+          console.error('Failed to open external URL:', err)
+        })
+      }
+      // Deny the child BrowserWindow in all HTTPS cases — either shell.openExternal
+      // was called above, or the origin is not approved and should be blocked.
+      return { action: 'deny' }
+    }
+
+    // blob: URLs are created by URL.createObjectURL() for local PDF uploads;
+    // http://localhost and http://127.0.0.1 are used by resolvePreviewUrl() and dev servers.
+    // Both should open as child BrowserWindows (Electron's PDF viewer).
+    if (
+      parsed.protocol === 'blob:' ||
+      (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1'))
+    ) {
+      return { action: 'allow' }
+    }
+
+    return { action: 'deny' }
+  })
 
   if (app.isPackaged) {
     win.loadFile(join(__dirname, '../../renderer/index.html'))
