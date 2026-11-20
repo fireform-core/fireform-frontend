@@ -129,7 +129,7 @@ export function App() {
           </div>
           <span className="text-sm font-bold tracking-tight text-zinc-900">FireForm</span>
           <span className="text-[11px] font-mono text-zinc-400 px-1.5 py-0.5 rounded bg-zinc-100">
-            v1.1.1
+            v1.1.2
           </span>
         </div>
 
