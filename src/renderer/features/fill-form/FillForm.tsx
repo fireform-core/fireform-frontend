@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useStore } from '../../store'
 import { useSpeechRecording } from './hooks'
-import { fillTemplate } from '../../lib/api'
+import { fillTemplate, fetchProfile } from '../../lib/api'
 import { saveLastOutputPath } from '../../lib/storage'
 import { pluralize } from '../../lib/utils'
 
@@ -32,6 +32,7 @@ export function FillForm() {
   const [isLocationOpen, setIsLocationOpen] = useState(false)
   const [initialWeatherLat, setInitialWeatherLat] = useState<number | undefined>(undefined)
   const [initialWeatherLon, setInitialWeatherLon] = useState<number | undefined>(undefined)
+  const [includeProfileContext, setIncludeProfileContext] = useState(false)
 
   function handleFetchWeatherFromLocation(lat: number, lon: number) {
     setInitialWeatherLat(lat)
@@ -104,6 +105,20 @@ export function FillForm() {
 
     let finalInputText = inputText.trim()
     if (weatherData) finalInputText += `\n\n${weatherData}`
+    let profileId: string | undefined
+    if (includeProfileContext) {
+      try {
+        const profile = await fetchProfile()
+        profileId = profile?.profile_id
+      } catch (e: unknown) {
+        setStatus({ message: `Could not load profile context: ${(e as Error).message}`, type: 'error' })
+        return
+      }
+      if (!profileId) {
+        setStatus({ message: 'No saved profile found. Add one in Settings or disable profile context.', type: 'error' })
+        return
+      }
+    }
 
     for (const id of selectedFillIds) {
       try {
@@ -112,6 +127,7 @@ export function FillForm() {
           input_text: finalInputText,
           provider: selectedLLM.provider,
           model: selectedLLM.model,
+          ...(profileId ? { profile_id: profileId } : {}),
         })
         results.push(result)
       } catch (e: unknown) {
@@ -264,6 +280,15 @@ export function FillForm() {
         )}
 
         <ModelSelector />
+
+        <label className="profile-context-toggle">
+          <input
+            type="checkbox"
+            checked={includeProfileContext}
+            onChange={e => setIncludeProfileContext(e.target.checked)}
+          />
+          <span>Include my profile context when filling</span>
+        </label>
 
         <p><b>External APIs</b></p>
 
