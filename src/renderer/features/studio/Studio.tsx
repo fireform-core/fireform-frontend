@@ -13,6 +13,7 @@ import {
   fetchTemplates,
 
   fillTemplate,
+  fetchProfile,
 } from '../../lib/api'
 import { saveLastOutputPath } from '../../lib/storage'
 import { WeatherModal } from '../weather-forecast/WeatherForecast'
@@ -60,6 +61,7 @@ export function Studio() {
   // Filler state
   const selectedLLM = useStore(s => s.selectedLLM)
   const [weatherCoords, setWeatherCoords] = useState<{ lat: number; lon: number } | null>(null)
+  const [includeProfileContext, setIncludeProfileContext] = useState(false)
 
   // Modals & Loaders
   const [isMakeFillableLoading, setIsMakeFillableLoading] = useState(false)
@@ -395,11 +397,18 @@ export function Studio() {
     setIsFilling(true)
     setStatusMessage({ text: 'Running LLM pipeline to fill document...', type: 'info' })
     try {
+      let profileId: string | undefined
+      if (includeProfileContext) {
+        const profile = await fetchProfile()
+        profileId = profile?.profile_id
+        if (!profileId) throw new Error('No saved profile found. Add one in Settings or disable profile context.')
+      }
       const res: any = await fillTemplate({
         template_id: tplId,
         input_text: narrativeText.trim(),
         provider: selectedLLM.provider,
         model: selectedLLM.model,
+        ...(profileId ? { profile_id: profileId } : {}),
       })
 
       const outPath = typeof res?.output_pdf_path === 'string' ? res.output_pdf_path : ''
@@ -489,6 +498,8 @@ export function Studio() {
             else startRecording()
           }}
           onFillForm={handleFillForm}
+          includeProfileContext={includeProfileContext}
+          onIncludeProfileContextChange={setIncludeProfileContext}
           isFilling={isFilling}
           onOpenWeather={() => setIsWeatherOpen(true)}
           onOpenZipcode={() => setIsZipcodeOpen(true)}
