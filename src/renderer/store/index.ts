@@ -19,6 +19,9 @@ import {
   savePinnedLLMModels,
   saveSelectedLLM,
   type PinnedLLMModels,
+  loadLanguage,
+  saveLanguage,
+  type SupportedLanguage,
 } from '../lib/storage'
 
 export interface ModelDownloadState {
@@ -97,6 +100,8 @@ interface AppStore {
   modelDownloadController: AbortController | null
   notification: AppNotification | null
   activeReport: ActiveReport | null
+  language: SupportedLanguage
+  setLanguage: (language: SupportedLanguage) => void
 
   setTemplates: (templates: Template[]) => void
   upsertTemplate: (template: Template) => void
@@ -153,6 +158,11 @@ export const useStore = create<AppStore>((set, get) => ({
   modelDownloadController: null,
   notification: null,
   activeReport: null,
+  language: loadLanguage(),
+  setLanguage: (language: SupportedLanguage) => {
+    saveLanguage(language)
+    set({ language })
+  },
 
   setTemplates: (templates) => {
     saveTemplates(templates)

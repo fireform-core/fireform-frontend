@@ -12,7 +12,7 @@ import { ConfirmDialog, TrashIcon } from '../../components/ConfirmDialog'
 import { ModelSelector } from '../../components/ModelSelector'
 
 export function FillForm() {
-  const { templates, selectedFillIds, toggleFillSelection, setActiveTab, setPreviewPath, selectedLLM } =
+  const { templates, selectedFillIds, toggleFillSelection, setActiveTab, setPreviewPath, selectedLLM, language } =
     useStore(s => ({
       templates: s.templates,
       selectedFillIds: s.selectedFillIds,
@@ -20,6 +20,7 @@ export function FillForm() {
       setActiveTab: s.setActiveTab,
       setPreviewPath: s.setPreviewPath,
       selectedLLM: s.selectedLLM,
+      language: s.language,
     }))
 
   const del = useDeleteTemplate()
@@ -112,6 +113,7 @@ export function FillForm() {
           input_text: finalInputText,
           provider: selectedLLM.provider,
           model: selectedLLM.model,
+          language,
         })
         results.push(result)
       } catch (e: unknown) {

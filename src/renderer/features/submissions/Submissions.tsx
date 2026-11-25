@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react'
 import { useStore } from '../../store'
+import { useTranslation } from '../../lib/i18n'
 import type { FormSubmissionData, AnalyticsData } from '../../lib/api'
 import { fetchSubmissions, fetchAnalytics } from '../../lib/api'
 import { Button } from '../../components/ui/button'
@@ -21,6 +22,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../..
 import { cn } from '../../lib/utils'
 
 export function Submissions() {
+  const { t, language } = useTranslation()
   const { setActiveTab, setPreviewPath } = useStore(s => ({
     setActiveTab: s.setActiveTab,
     setPreviewPath: s.setPreviewPath,
@@ -42,7 +44,7 @@ export function Submissions() {
       setSubmissions(subs)
       setAnalytics(stats)
     } catch (err: any) {
-      setError(err?.message || 'Failed to load submissions and analytics data.')
+      setError(err?.message || t.submissions.failedToLoad)
     } finally {
       setLoading(false)
     }
@@ -51,6 +53,7 @@ export function Submissions() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleViewPdf = (pdfPath: string) => {
@@ -62,7 +65,7 @@ export function Submissions() {
     if (!isoStr) return 'N/A'
     try {
       const date = new Date(isoStr)
-      return date.toLocaleDateString(undefined, {
+      return date.toLocaleDateString(language === 'es' ? 'es-ES' : undefined, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
@@ -89,7 +92,7 @@ export function Submissions() {
     return (
       <div className="flex flex-col items-center justify-center p-16 text-center">
         <div className="w-8 h-8 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-xs font-medium text-zinc-500 font-mono">Loading submissions & metrics...</p>
+        <p className="text-xs font-medium text-zinc-500 font-mono">{t.submissions.loading}</p>
       </div>
     )
   }
@@ -97,11 +100,11 @@ export function Submissions() {
   if (error) {
     return (
       <Card className="border-red-200 bg-red-50/50 p-6 text-center max-w-lg mx-auto">
-        <p className="text-sm font-semibold text-red-900">Error Loading Submissions</p>
+        <p className="text-sm font-semibold text-red-900">{t.submissions.errorLoading}</p>
         <p className="text-xs text-red-700 mt-1">{error}</p>
         <Button onClick={loadData} variant="outline" size="sm" className="mt-4 bg-white">
           <RotateCw className="w-3.5 h-3.5 mr-1.5" />
-          Retry
+          {t.submissions.retry}
         </Button>
       </Card>
     )
@@ -116,9 +119,9 @@ export function Submissions() {
       {/* Top Header & Sub-Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-900">Submissions & Analytics</h1>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900">{t.submissions.title}</h1>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Audit trail of generated documents, extracted clinical facts, and filing analytics.
+            {t.submissions.subtitle}
           </p>
         </div>
 
@@ -135,7 +138,7 @@ export function Submissions() {
               )}
             >
               <FileText className="w-3.5 h-3.5" />
-              Generated PDFs ({totalSubmissions})
+              {t.submissions.generatedPdfs} ({totalSubmissions})
             </button>
             <button
               type="button"
@@ -148,13 +151,13 @@ export function Submissions() {
               )}
             >
               <TrendingUp className="w-3.5 h-3.5" />
-              Analytics Dashboard
+              {t.submissions.analyticsDashboard}
             </button>
           </div>
 
           <Button onClick={loadData} variant="outline" size="sm" className="h-8 bg-white text-xs">
             <RotateCw className="w-3.5 h-3.5 mr-1" />
-            Refresh
+            {t.submissions.refresh}
           </Button>
         </div>
       </div>
@@ -168,21 +171,21 @@ export function Submissions() {
               <Input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Filter submissions..."
+                placeholder={t.submissions.filterPlaceholder}
                 className="pl-8 text-xs bg-white"
               />
             </div>
             <span className="text-xs font-mono text-zinc-400">
-              Showing {filteredSubmissions.length} of {totalSubmissions} records
+              {t.submissions.showing} {filteredSubmissions.length} {t.submissions.of} {totalSubmissions} {t.submissions.records}
             </span>
           </div>
 
           {filteredSubmissions.length === 0 ? (
             <div className="p-12 text-center bg-white border border-dashed border-zinc-200 rounded-lg">
               <FileText className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-zinc-800">No submissions found</p>
+              <p className="text-sm font-semibold text-zinc-800">{t.submissions.noSubmissionsFound}</p>
               <p className="text-xs text-zinc-500 mt-1">
-                Fill a form in the Studio workspace to generate output PDFs.
+                {t.submissions.noSubmissionsDesc}
               </p>
             </div>
           ) : (
@@ -190,11 +193,11 @@ export function Submissions() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase font-mono text-[10px]">
                   <tr>
-                    <th className="px-4 py-2.5 w-16">ID</th>
-                    <th className="px-4 py-2.5 w-44">Date & Time</th>
-                    <th className="px-4 py-2.5 w-48">Template</th>
-                    <th className="px-4 py-2.5">Input Narrative</th>
-                    <th className="px-4 py-2.5 text-right w-28">Action</th>
+                    <th className="px-4 py-2.5 w-16">{t.submissions.id}</th>
+                    <th className="px-4 py-2.5 w-44">{t.submissions.dateTime}</th>
+                    <th className="px-4 py-2.5 w-48">{t.submissions.template}</th>
+                    <th className="px-4 py-2.5">{t.submissions.inputNarrative}</th>
+                    <th className="px-4 py-2.5 text-right w-28">{t.submissions.action}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
@@ -215,9 +218,9 @@ export function Submissions() {
                         <td
                           className="px-4 py-3 text-zinc-600 truncate max-w-md cursor-pointer hover:text-zinc-950 font-normal"
                           onClick={() => setSelectedInputText(sub.input_text)}
-                          title="Click to view full transcript narrative"
+                          title={t.submissions.clickToViewTranscript}
                         >
-                          {sub.input_text || <span className="text-zinc-400 italic">(Direct Input)</span>}
+                          {sub.input_text || <span className="text-zinc-400 italic">{t.submissions.directInput}</span>}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <Button
@@ -227,7 +230,7 @@ export function Submissions() {
                             className="bg-zinc-900 text-white text-[11px]"
                           >
                             <Eye className="w-3 h-3 mr-1" />
-                            View PDF
+                            {t.submissions.viewPdf}
                           </Button>
                         </td>
                       </tr>
@@ -248,7 +251,7 @@ export function Submissions() {
             <Card>
               <CardHeader className="pb-1">
                 <CardDescription className="uppercase font-mono text-[10px]">
-                  Total Documents Filed
+                  {t.submissions.totalDocsFiled}
                 </CardDescription>
                 <CardTitle className="text-2xl font-black tracking-tight text-zinc-900 mt-1">
                   {totalSubmissions}
@@ -257,7 +260,7 @@ export function Submissions() {
               <CardContent>
                 <span className="text-[11px] text-zinc-500 flex items-center gap-1">
                   <Activity className="w-3 h-3 text-emerald-600" />
-                  Auto-formatted with local LLM
+                  {t.submissions.autoFormatted}
                 </span>
               </CardContent>
             </Card>
@@ -265,7 +268,7 @@ export function Submissions() {
             <Card>
               <CardHeader className="pb-1">
                 <CardDescription className="uppercase font-mono text-[10px]">
-                  Top Incident Template
+                  {t.submissions.topTemplate}
                 </CardDescription>
                 <CardTitle className="text-lg font-bold text-zinc-900 mt-1 truncate">
                   {topTemplate}
@@ -273,7 +276,7 @@ export function Submissions() {
               </CardHeader>
               <CardContent>
                 <Badge variant="outline" className="text-[10px] font-mono">
-                  {topTemplateCount} {topTemplateCount === 1 ? 'submission' : 'submissions'}
+                  {topTemplateCount} {topTemplateCount === 1 ? t.submissions.submissionSingular : t.submissions.submissionsPlural}
                 </Badge>
               </CardContent>
             </Card>
@@ -281,15 +284,15 @@ export function Submissions() {
             <Card>
               <CardHeader className="pb-1">
                 <CardDescription className="uppercase font-mono text-[10px]">
-                  Database Engine
+                  {t.submissions.databaseEngine}
                 </CardDescription>
                 <CardTitle className="text-lg font-bold text-emerald-700 mt-1 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Live & Synchronized
+                  {t.submissions.liveSynchronized}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <span className="text-[11px] text-zinc-500">SQLModel SQLite / Postgres ready</span>
+                <span className="text-[11px] text-zinc-500">{t.submissions.sqlModelReady}</span>
               </CardContent>
             </Card>
           </div>
@@ -302,10 +305,10 @@ export function Submissions() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-sm font-semibold text-zinc-900">
-                      Volume Trend Over Time
+                      {t.submissions.volumeTrend}
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Number of forms generated per day
+                      {t.submissions.volumeTrendDesc}
                     </CardDescription>
                   </div>
                   <TrendingUp className="w-4 h-4 text-zinc-400" />
@@ -314,7 +317,7 @@ export function Submissions() {
               <CardContent>
                 {analytics.by_date.length === 0 ? (
                   <div className="h-44 flex items-center justify-center text-xs text-zinc-400">
-                    Not enough historical data points yet.
+                    {t.submissions.notEnoughData}
                   </div>
                 ) : (
                   <div className="h-44 w-full">
@@ -330,10 +333,10 @@ export function Submissions() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-sm font-semibold text-zinc-900">
-                      Template Distribution
+                      {t.submissions.templateDistribution}
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Relative popularity of incident templates
+                      {t.submissions.templateDistributionDesc}
                     </CardDescription>
                   </div>
                   <BarChart3 className="w-4 h-4 text-zinc-400" />
@@ -342,18 +345,18 @@ export function Submissions() {
               <CardContent>
                 {analytics.by_template.length === 0 ? (
                   <div className="h-44 flex items-center justify-center text-xs text-zinc-400">
-                    No templates have been filled yet.
+                    {t.submissions.noTemplatesFilled}
                   </div>
                 ) : (
                   <div className="space-y-3 pt-1">
-                    {analytics.by_template.map(t => {
+                    {analytics.by_template.map(tItem => {
                       const maxVal = Math.max(...analytics.by_template.map(item => item.count)) || 1
-                      const pct = Math.round((t.count / maxVal) * 100)
+                      const pct = Math.round((tItem.count / maxVal) * 100)
                       return (
-                        <div key={t.template_name} className="space-y-1">
+                        <div key={tItem.template_name} className="space-y-1">
                           <div className="flex justify-between text-xs font-medium">
-                            <span className="truncate max-w-[220px] text-zinc-800">{t.template_name}</span>
-                            <span className="font-mono text-zinc-500 font-semibold">{t.count}</span>
+                            <span className="truncate max-w-[220px] text-zinc-800">{tItem.template_name}</span>
+                            <span className="font-mono text-zinc-500 font-semibold">{tItem.count}</span>
                           </div>
                           <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
                             <div
@@ -375,16 +378,16 @@ export function Submissions() {
             <CardHeader>
               <CardTitle className="text-sm font-semibold text-zinc-900 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500" />
-                Extracted Facts & Clinical Symptoms
+                {t.submissions.extractedFacts}
               </CardTitle>
               <CardDescription className="text-xs">
-                Frequently recurring findings, burns, and dispatch phrases extracted from narratives
+                {t.submissions.extractedFactsDesc}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {analytics.common_terms.length === 0 ? (
                 <p className="text-xs text-zinc-400 py-4 text-center">
-                  Fill more forms in the Studio to generate keyword intelligence.
+                  {t.submissions.fillMoreForms}
                 </p>
               ) : (
                 <div className="flex flex-wrap gap-2">
@@ -417,7 +420,7 @@ export function Submissions() {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
-              <h3 className="text-sm font-bold text-zinc-900">Incident Narrative Transcript</h3>
+              <h3 className="text-sm font-bold text-zinc-900">{t.submissions.transcriptModalTitle}</h3>
               <button
                 type="button"
                 onClick={() => setSelectedInputText(null)}
@@ -429,13 +432,13 @@ export function Submissions() {
 
             <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-md max-h-72 overflow-y-auto">
               <p className="text-xs font-mono text-zinc-800 whitespace-pre-wrap leading-relaxed">
-                {selectedInputText || 'No transcript text.'}
+                {selectedInputText || t.submissions.noTranscriptText}
               </p>
             </div>
 
             <div className="flex justify-end pt-2">
               <Button size="sm" onClick={() => setSelectedInputText(null)} className="bg-zinc-900 text-white">
-                Close
+                {t.submissions.close}
               </Button>
             </div>
           </div>

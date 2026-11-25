@@ -18,6 +18,7 @@ import { Reports } from './features/reports/Reports'
 import { PdfPreviewer } from './components/PdfPreviewer'
 import { Settings } from './features/settings/Settings'
 import { cn } from './lib/utils'
+import { useTranslation } from './lib/i18n'
 
 const NAV_ITEMS = [
   { id: 'studio', label: 'Studio & Workspace', icon: Layers },
@@ -25,9 +26,10 @@ const NAV_ITEMS = [
   { id: 'submissions', label: 'Submissions & Analytics', icon: History },
   { id: 'reports', label: 'Reports', icon: FileChartColumn },
   { id: 'settings', label: 'Settings', icon: Settings2 },
-]
+] as const
 
 export function App() {
+  const { t } = useTranslation()
   const {
     activeTab,
     setActiveTab,
@@ -138,6 +140,7 @@ export function App() {
           {NAV_ITEMS.map(item => {
             const Icon = item.icon
             const isActive = activeTab === item.id || (item.id === 'studio' && activeTab === 'fillForm')
+            const navLabel = t.nav[item.id as keyof typeof t.nav] || item.label
             return (
               <button
                 key={item.id}
@@ -151,7 +154,7 @@ export function App() {
                 )}
               >
                 <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-zinc-950' : 'text-zinc-500')} />
-                {item.label}
+                {navLabel}
               </button>
             )
           })}
@@ -177,12 +180,12 @@ export function App() {
               )}
             />
             <span>
-              {backend.status === 'connected' ? 'Connected' : backend.status === 'degraded' ? 'Degraded' : 'Disconnected'}
+              {backend.status === 'connected' ? t.nav.connected : backend.status === 'degraded' ? t.nav.degraded : t.nav.disconnected}
             </span>
           </div>
 
           <div className="text-[11px] font-mono text-zinc-400">
-            <span>{templates.length} {templates.length === 1 ? 'template' : 'templates'}</span>
+            <span>{templates.length} {templates.length === 1 ? t.nav.template : t.nav.templates}</span>
           </div>
         </div>
       </header>

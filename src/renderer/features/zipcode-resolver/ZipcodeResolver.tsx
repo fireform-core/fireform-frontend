@@ -13,6 +13,7 @@ import { fetchAddressLookup } from '../../lib/api'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { cn } from '../../lib/utils'
+import { useTranslation } from '../../lib/i18n'
 
 // Extend window to access the Leaflet global loaded via CDN in index.html
 declare const L: any
@@ -24,6 +25,7 @@ export interface ZipcodeModalProps {
 }
 
 export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalProps) {
+  const { t } = useTranslation()
   const [address, setAddress] = useState('')
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState({ message: '', type: '' })
@@ -164,9 +166,9 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
               <MapPin className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-zinc-900">Address & Zipcode Geocoding</h2>
+              <h2 className="text-sm font-bold text-zinc-900">{t.zipcode.headerTitle}</h2>
               <p className="text-[11px] text-zinc-500">
-                Resolve municipal fire zones, GPS coordinates, and postal districts.
+                {t.zipcode.headerSubtitle}
               </p>
             </div>
           </div>
@@ -187,7 +189,7 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
               <Input
                 value={address}
                 onChange={e => setAddress(e.target.value)}
-                placeholder="e.g. 123 Main St, Albany, NY or 10001"
+                placeholder={t.zipcode.addressPlaceholder}
                 className="pl-8 text-xs bg-white"
                 required
               />
@@ -200,12 +202,12 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
               {loading ? (
                 <>
                   <RotateCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  Resolving…
+                  {t.zipcode.resolving}
                 </>
               ) : (
                 <>
                   <Navigation className="w-3.5 h-3.5 mr-1.5" />
-                  Lookup Address
+                  {t.zipcode.lookupBtn}
                 </>
               )}
             </Button>
@@ -248,21 +250,21 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
             <div className="space-y-2 border border-zinc-200 rounded-lg p-3 bg-zinc-50">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase font-mono text-zinc-800">
-                  Resolved Geographic Matches ({results.length})
+                  {t.zipcode.resolvedMatches} ({results.length})
                 </span>
-                <span className="text-[10px] text-zinc-500">Click a row to center pin</span>
+                <span className="text-[10px] text-zinc-500">{t.zipcode.clickToCenter}</span>
               </div>
 
               <div className="max-h-48 overflow-auto border border-zinc-200 rounded bg-white">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-zinc-100 border-b border-zinc-200 text-zinc-600 font-mono text-[10px] uppercase">
                     <tr>
-                      <th className="p-2 w-10 text-center">Select</th>
-                      <th className="p-2">Postal Code</th>
-                      <th className="p-2">Place Name</th>
-                      <th className="p-2">State / Region</th>
-                      <th className="p-2">Country</th>
-                      <th className="p-2 font-mono">Coordinates</th>
+                      <th className="p-2 w-10 text-center">{t.zipcode.useLocation}</th>
+                      <th className="p-2">{t.zipcode.postalCode}</th>
+                      <th className="p-2">{t.zipcode.placeName}</th>
+                      <th className="p-2">{t.zipcode.stateRegion}</th>
+                      <th className="p-2">{t.zipcode.country}</th>
+                      <th className="p-2 font-mono">{t.zipcode.coordinates}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 font-mono text-[11px]">
@@ -306,7 +308,7 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
         {/* Modal Footer Actions */}
         <div className="p-3 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between">
           <Button variant="outline" size="sm" onClick={onClose} className="bg-white text-xs">
-            Cancel
+            {t.weather.cancel}
           </Button>
 
           {results && results.length > 0 && (
@@ -315,7 +317,7 @@ export function ZipcodeModal({ isOpen, onClose, onFetchWeather }: ZipcodeModalPr
               className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs h-8 shadow-xs"
             >
               <CloudSun className="w-3.5 h-3.5 mr-1.5 text-amber-300" />
-              Fetch Weather for Selected Coordinates
+              {t.zipcode.fetchWeatherForCoords}
             </Button>
           )}
         </div>

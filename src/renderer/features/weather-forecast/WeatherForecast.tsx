@@ -10,6 +10,19 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Badge } from '../../components/ui/badge'
 import { cn } from '../../lib/utils'
+import { useTranslation } from '../../lib/i18n'
+
+const FIELD_LABELS_ES: Record<string, string> = {
+  temperature_2m: 'Temperatura (2 m)',
+  apparent_temperature: 'Temperatura Aparente',
+  relative_humidity_2m: 'Humedad Relativa',
+  precipitation: 'Precipitación',
+  precipitation_probability: 'Probabilidad de Precipitación',
+  rain: 'Lluvia',
+  wind_speed_10m: 'Velocidad del Viento (10 m)',
+  wind_direction_10m: 'Dirección del Viento (10 m)',
+  soil_temperature_0cm: 'Temperatura del Suelo',
+}
 
 // ─── Field catalogue ────────────────────────────────────────────────────────
 
@@ -83,23 +96,28 @@ interface WeatherResult {
 
 function serializeWeatherData(
   data: WeatherResult,
-  activeFields: Array<(typeof FIELD_CATALOGUE)[number]>
+  activeFields: Array<(typeof FIELD_CATALOGUE)[number]>,
+  language: string = 'en'
 ): string {
+  const isEs = language === 'es'
   if (!data.hourly || !Array.isArray(data.hourly.time)) {
-    return 'No hourly data returned.'
+    return isEs ? 'No se devolvieron datos horarios.' : 'No hourly data returned.'
   }
 
   const times = data.hourly.time
-  let text = `Latitude: ${data.latitude}, Longitude: ${data.longitude}\n`
-  text += `Recorded hourly metrics:\n`
+  let text = isEs
+    ? `Latitud: ${data.latitude}, Longitud: ${data.longitude}\n`
+    : `Latitude: ${data.latitude}, Longitude: ${data.longitude}\n`
+  text += isEs ? `Métricas horarias registradas:\n` : `Recorded hourly metrics:\n`
 
   times.forEach((t: string, idx: number) => {
     const formattedTime = t.replace('T', ' ')
     const values = activeFields
       .map(f => {
         const val = (data.hourly?.[f.key] as (number | null)[])?.[idx]
-        if (val === null || val === undefined) return `${f.label}: N/A`
-        return `${f.label}: ${val} ${f.unit}`
+        const label = isEs ? (FIELD_LABELS_ES[f.key] || f.label) : f.label
+        if (val === null || val === undefined) return `${label}: N/A`
+        return `${label}: ${val} ${f.unit}`
       })
       .join(', ')
     text += `[${formattedTime}] ${values}\n`
@@ -124,6 +142,8 @@ export function WeatherModal({
   initialLatitude,
   initialLongitude,
 }: WeatherModalProps) {
+  const { t, language } = useTranslation()
+  const isEs = language === 'es'
   const [latitude, setLatitude] = useState(initialLatitude ? String(initialLatitude) : '')
   const [longitude, setLongitude] = useState(initialLongitude ? String(initialLongitude) : '')
   const [startDate, setStartDate] = useState('')
@@ -170,7 +190,7 @@ export function WeatherModal({
     setStatus({ message: '', type: '' })
 
     if (selected.size === 0) {
-      setStatus({ message: 'Please select at least one weather metric.', type: 'error' })
+      setStatus({ message: t.weather.selectMetricError, type: 'error' })
       return
     }
 
@@ -180,26 +200,26 @@ export function WeatherModal({
     const end = sameDay ? startDate : endDate
 
     if (isNaN(lat) || isNaN(lon)) {
-      setStatus({ message: 'Latitude and Longitude must be valid numbers.', type: 'error' })
+      setStatus({ message: t.weather.validNumbersError, type: 'error' })
       return
     }
 
     if (!start || (!sameDay && !end)) {
-      setStatus({ message: 'Please specify start and end dates.', type: 'error' })
+      setStatus({ message: t.weather.specifyDatesError, type: 'error' })
       return
     }
 
     if (!sameDay && start > end) {
-      setStatus({ message: 'Start date must be before end date.', type: 'error' })
+      setStatus({ message: t.weather.dateOrderError, type: 'error' })
       return
     }
 
     try {
       setLoading(true)
-      setStatus({ message: 'Querying Open-Meteo meteorological database…', type: 'info' })
+      setStatus({ message: t.weather.querying, type: 'info' })
       const data = await fetchWeatherForecast(lat, lon, start, end, Array.from(selected))
       setResult(data as unknown as WeatherResult)
-      setStatus({ message: 'Weather metrics retrieved successfully.', type: 'success' })
+      setStatus({ message: t.weather.success, type: 'success' })
     } catch (err: unknown) {
       setStatus({ message: (err as Error).message, type: 'error' })
     } finally {
@@ -211,7 +231,7 @@ export function WeatherModal({
 
   function handleAgree() {
     if (result) {
-      const serialized = serializeWeatherData(result, activeFields)
+      const serialized = serializeWeatherData(result, activeFields, language)
       onAgree(serialized)
       onClose()
     }
@@ -233,9 +253,9 @@ export function WeatherModal({
               <CloudSun className="w-4 h-4 text-amber-300" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-zinc-900">Historical & Live Weather Intelligence</h2>
+              <h2 className="text-sm font-bold text-zinc-900">{t.weather.headerTitle}</h2>
               <p className="text-[11px] text-zinc-500">
-                Retrieve temperature, wind, humidity and precipitation from Open-Meteo.
+                {t.weather.headerSubtitle}
               </p>
             </div>
           </div>
@@ -255,7 +275,7 @@ export function WeatherModal({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] uppercase font-mono text-zinc-500 font-bold block mb-1">
-                  Latitude
+                  {t.weather.latitude}
                 </label>
                 <Input
                   type="number"
@@ -269,7 +289,7 @@ export function WeatherModal({
               </div>
               <div>
                 <label className="text-[10px] uppercase font-mono text-zinc-500 font-bold block mb-1">
-                  Longitude
+                  {t.weather.longitude}
                 </label>
                 <Input
                   type="number"
@@ -287,7 +307,7 @@ export function WeatherModal({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] uppercase font-mono text-zinc-500 font-bold block mb-1">
-                  Start Date
+                  {t.weather.startDate}
                 </label>
                 <Input
                   type="date"
@@ -299,7 +319,7 @@ export function WeatherModal({
               </div>
               <div>
                 <label className="text-[10px] uppercase font-mono text-zinc-500 font-bold block mb-1">
-                  End Date
+                  {t.weather.endDate}
                 </label>
                 <Input
                   type="date"
@@ -321,7 +341,7 @@ export function WeatherModal({
                 className="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
               />
               <label htmlFor="sameDayCheckbox" className="text-xs text-zinc-700 cursor-pointer">
-                Single day lookup (start and end date are the same)
+                {t.weather.singleDay}
               </label>
             </div>
 
@@ -329,7 +349,7 @@ export function WeatherModal({
             <div className="border border-zinc-200 rounded-lg p-3 bg-zinc-50/50 space-y-2">
               <div className="flex items-center justify-between pb-1 border-b border-zinc-200">
                 <span className="text-[10px] uppercase font-mono text-zinc-500 font-bold">
-                  Select Weather Variables ({selected.size} of {FIELD_CATALOGUE.length})
+                  {t.weather.selectVariables} ({selected.size} of {FIELD_CATALOGUE.length})
                 </span>
                 <div className="flex items-center gap-2 text-xs">
                   <button
@@ -337,7 +357,7 @@ export function WeatherModal({
                     onClick={selectAll}
                     className="text-[11px] text-zinc-600 hover:text-zinc-950 underline font-medium"
                   >
-                    Select all
+                    {t.weather.selectAll}
                   </button>
                   <span className="text-zinc-300">•</span>
                   <button
@@ -345,7 +365,7 @@ export function WeatherModal({
                     onClick={deselectAll}
                     className="text-[11px] text-zinc-600 hover:text-zinc-950 underline font-medium"
                   >
-                    Deselect all
+                    {t.weather.deselectAll}
                   </button>
                 </div>
               </div>
@@ -353,6 +373,7 @@ export function WeatherModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                 {FIELD_CATALOGUE.map(field => {
                   const isChecked = selected.has(field.key)
+                  const label = isEs ? (FIELD_LABELS_ES[field.key] || field.label) : field.label
                   return (
                     <label
                       key={field.key}
@@ -369,7 +390,7 @@ export function WeatherModal({
                         onChange={() => toggleField(field.key)}
                         className="rounded border-zinc-300 text-zinc-900"
                       />
-                      <span className="truncate flex-1">{field.label}</span>
+                      <span className="truncate flex-1">{label}</span>
                       <span className="font-mono text-[10px] text-zinc-400">{field.unit}</span>
                     </label>
                   )
@@ -385,12 +406,12 @@ export function WeatherModal({
               {loading ? (
                 <>
                   <RotateCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  Fetching Meteorological Data…
+                  {t.weather.fetching}
                 </>
               ) : (
                 <>
                   <CloudSun className="w-3.5 h-3.5 mr-1.5" />
-                  Fetch Weather History
+                  {t.weather.fetchWeather}
                 </>
               )}
             </Button>
@@ -416,10 +437,10 @@ export function WeatherModal({
             <div className="space-y-2 border border-zinc-200 rounded-lg p-3 bg-zinc-50">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase font-mono text-zinc-800">
-                  Retrieved Hourly Timeline ({result.hourly.time?.length ?? 0} data points)
+                  {t.weather.retrievedTimeline} ({result.hourly.time?.length ?? 0} {t.weather.dataPoints})
                 </span>
                 <Badge variant="outline" className="text-[10px] font-mono">
-                  {activeFields.length} metrics
+                  {activeFields.length} {t.weather.metrics}
                 </Badge>
               </div>
 
@@ -427,12 +448,15 @@ export function WeatherModal({
                 <table className="w-full text-left text-[11px]">
                   <thead className="bg-zinc-100 border-b border-zinc-200 text-zinc-600 font-mono text-[10px]">
                     <tr>
-                      <th className="p-2">Timestamp</th>
-                      {activeFields.map(f => (
-                        <th key={f.key} className="p-2 whitespace-nowrap">
-                          {f.label} ({f.unit})
-                        </th>
-                      ))}
+                      <th className="p-2">{t.weather.timestamp}</th>
+                      {activeFields.map(f => {
+                        const label = isEs ? (FIELD_LABELS_ES[f.key] || f.label) : f.label
+                        return (
+                          <th key={f.key} className="p-2 whitespace-nowrap">
+                            {label} ({f.unit})
+                          </th>
+                        )
+                      })}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 font-mono text-[11px]">
@@ -459,7 +483,7 @@ export function WeatherModal({
         {/* Footer Actions */}
         <div className="p-3 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between">
           <Button variant="outline" size="sm" onClick={onClose} className="bg-white text-xs">
-            Close
+            {t.weather.close}
           </Button>
 
           {result && (
@@ -468,7 +492,7 @@ export function WeatherModal({
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 shadow-xs"
             >
               <Send className="w-3.5 h-3.5 mr-1.5" />
-              Insert Weather into Incident Narrative
+              {t.weather.insertNarrative}
             </Button>
           )}
         </div>
