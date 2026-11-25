@@ -197,10 +197,10 @@ export function Settings() {
       if (result.profile_id) {
         setProfile(prev => ({ ...prev, profile_id: result.profile_id }))
       }
-      setProfileFeedback({ type: 'success', text: 'Profile saved successfully!' })
+      setProfileFeedback({ type: 'success', text: t.settings.profileSaved })
       setTimeout(() => setProfileFeedback(null), 4000)
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to save profile.'
+      const message = error instanceof Error ? error.message : t.settings.profileFailed
       setProfileFeedback({ type: 'error', text: message })
     } finally {
       setSavingProfile(false)
@@ -211,20 +211,20 @@ export function Settings() {
     <div className="flex-1 overflow-auto bg-zinc-50 p-8">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-zinc-900 tracking-tight">Settings</h1>
+          <h1 className="text-xl font-bold text-zinc-900 tracking-tight">{t.settings.title}</h1>
           <p className="text-sm text-zinc-500 mt-1">
-            Configure FireForm and your user profile to match your workflow.
+            {t.settings.subtitle}
           </p>
         </div>
 
         <div>
           <div className="flex items-center justify-between gap-3">
-            <SectionHeader icon={Cpu} title="AI Model" />
+            <SectionHeader icon={Cpu} title={t.settings.aiModelSection} />
           </div>
           <div className="bg-white border border-zinc-200 rounded-xl px-5">
             <SettingRow
-              label="LLM provider and model"
-              description="Choose from the providers you have set up."
+              label={t.settings.llmProvider}
+              description={t.settings.llmProviderDesc}
             >
               <ModelSelector
                 onConfigure={(provider, trigger) => openProviders(provider, trigger)}
@@ -236,7 +236,7 @@ export function Settings() {
                 className=""
                 onClick={event => openProviders('ollama', event.currentTarget)}
               >
-                Configure providers
+                {t.settings.configureProviders}
               </Button>
             </SettingRow>
             {catalogError && (
@@ -248,12 +248,11 @@ export function Settings() {
         </div>
 
         <div>
-          <SectionHeader icon={User} title="User Profile" />
+          <SectionHeader icon={User} title={t.settings.userProfileSection} />
           <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
             <div className="mb-4">
               <p className="text-xs text-zinc-500">
-                FireForm injects your professional role and attributes into the AI context for
-                higher-accuracy form fills.
+                {t.settings.userProfileDesc}
               </p>
             </div>
 
@@ -277,26 +276,26 @@ export function Settings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1">
-                    Full Name
+                    {t.settings.fullName}
                   </label>
                   <input
                     type="text"
                     value={profile.name}
                     onChange={event => setProfile({ ...profile, name: event.target.value })}
-                    placeholder="e.g. Jane Doe"
+                    placeholder={t.settings.fullNamePlaceholder}
                     className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-colors"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1">
-                    Profession
+                    {t.settings.profession}
                   </label>
                   <input
                     type="text"
                     value={profile.profession}
                     onChange={event => setProfile({ ...profile, profession: event.target.value })}
-                    placeholder="e.g. Firefighting, Healthcare"
+                    placeholder={t.settings.professionPlaceholder}
                     className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-colors"
                   />
                 </div>
@@ -304,26 +303,26 @@ export function Settings() {
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1">
-                  Role / Title
+                  {t.settings.role}
                 </label>
                 <input
                   type="text"
                   value={profile.role}
                   onChange={event => setProfile({ ...profile, role: event.target.value })}
-                  placeholder="e.g. Battalion Chief, Paramedic"
+                  placeholder={t.settings.rolePlaceholder}
                   className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-colors"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1">
-                  Bio / Description
+                  {t.settings.description}
                 </label>
                 <textarea
                   rows={2}
                   value={profile.description}
                   onChange={event => setProfile({ ...profile, description: event.target.value })}
-                  placeholder="Brief context or unit info..."
+                  placeholder={t.settings.descriptionPlaceholder}
                   className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-colors"
                 />
               </div>
@@ -331,20 +330,20 @@ export function Settings() {
               <div className="border-t border-zinc-100 pt-4">
                 <div className="flex justify-between items-center mb-3">
                   <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                    Custom Fields
+                    {t.settings.customAttributes}
                   </span>
                   <button
                     type="button"
                     onClick={handleAddCustomField}
                     className="flex items-center gap-1 text-xs font-medium bg-zinc-100 hover:bg-zinc-200 text-zinc-700 px-2.5 py-1 rounded-md transition border border-zinc-200"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Add Field
+                    <Plus className="w-3.5 h-3.5" /> {t.settings.addAttribute}
                   </button>
                 </div>
 
                 {profile.customFields.length === 0 && (
                   <p className="text-xs text-zinc-400 italic py-2">
-                    No custom fields added yet (e.g. badge_number, station_id).
+                    {t.settings.noCustomFields}
                   </p>
                 )}
 
@@ -353,7 +352,7 @@ export function Settings() {
                     <div key={index} className="flex items-center gap-2">
                       <input
                         type="text"
-                        placeholder="Key (e.g. badge_number)"
+                        placeholder={t.settings.key}
                         value={field.key}
                         onChange={event =>
                           handleCustomFieldChange(index, 'key', event.target.value)
@@ -362,7 +361,7 @@ export function Settings() {
                       />
                       <input
                         type="text"
-                        placeholder="Value (e.g. 12345)"
+                        placeholder={t.settings.value}
                         value={field.value}
                         onChange={event =>
                           handleCustomFieldChange(index, 'value', event.target.value)
@@ -390,11 +389,11 @@ export function Settings() {
                 >
                   {savingProfile ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                      <Loader2 className="w-4 h-4 animate-spin" /> {t.settings.saving}
                     </>
                   ) : (
                     <>
-                      <Save className="w-4 h-4" /> Save Profile
+                      <Save className="w-4 h-4" /> {t.settings.saveProfile}
                     </>
                   )}
                 </button>
@@ -441,11 +440,11 @@ export function Settings() {
         </div>
 
         <div>
-          <SectionHeader icon={Sparkles} title="Display" />
+          <SectionHeader icon={Sparkles} title={t.settings.displaySection} />
           <div className="bg-white border border-zinc-200 rounded-xl px-5">
             <SettingRow
-              label="Fill animations"
-              description="Fade and glow transition when a filled PDF appears in Studio. Turn off for an instant result."
+              label={t.settings.fillAnimations}
+              description={t.settings.fillAnimationsDesc}
             >
               <button
                 onClick={() => handleAnimationsChange(!animationsEnabled)}
@@ -456,7 +455,7 @@ export function Settings() {
                     : 'border-zinc-200 bg-zinc-50 text-zinc-500'
                 )}
               >
-                {animationsEnabled ? 'On' : 'Off'}
+                {animationsEnabled ? t.settings.on : t.settings.off}
               </button>
             </SettingRow>
           </div>

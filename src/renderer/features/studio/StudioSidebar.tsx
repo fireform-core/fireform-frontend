@@ -20,6 +20,7 @@ import { Badge } from '../../components/ui/badge'
 import { cn } from '../../lib/utils'
 import type { FieldRow } from '../../types'
 import { FIELD_TYPES, TYPE_VALUE_TO_LABEL } from '../../lib/constants'
+import { useTranslation } from '../../lib/i18n'
 
 interface StudioSidebarProps {
   mode: 'builder' | 'filler'
@@ -86,6 +87,7 @@ export function StudioSidebar({
   onOpenWeather,
   onOpenZipcode,
 }: StudioSidebarProps) {
+  const { t } = useTranslation()
   const [openSections, setOpenSections] = useState({
     template: true,
     fields: true,
@@ -129,7 +131,7 @@ export function StudioSidebar({
             )}
           >
             <Layers className="w-3.5 h-3.5" />
-            Template Builder
+            {t.studio.templateBuilder}
           </button>
           <button
             type="button"
@@ -142,7 +144,7 @@ export function StudioSidebar({
             )}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            AI Form Filler
+            {t.studio.aiFormFiller}
           </button>
         </div>
       </div>
@@ -162,7 +164,7 @@ export function StudioSidebar({
               ) : (
                 <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
               )}
-              <span>Template</span>
+              <span>{t.studio.template}</span>
             </div>
             <span className="text-[11px] font-mono lowercase text-zinc-400 font-normal">
               {templateName}
@@ -175,20 +177,20 @@ export function StudioSidebar({
                 <Input
                   value={templateName}
                   onChange={e => onTemplateNameChange(e.target.value)}
-                  placeholder="Template name (e.g. Incident Report)"
+                  placeholder={t.studio.templateNamePlaceholder}
                   className="font-medium"
                 />
               </div>
 
               <div>
                 <label className="text-[10px] uppercase font-mono text-zinc-500 font-semibold block mb-1">
-                  Description of the template
+                  {t.studio.templateDescLabel}
                 </label>
                 <textarea
                   rows={3}
                   value={templateDescription}
                   onChange={e => onTemplateDescriptionChange(e.target.value)}
-                  placeholder="Describe the purpose and context of this form (e.g. Standard NFIRS emergency incident report for structure fires) to give the LLM context..."
+                  placeholder={t.studio.templateDescPlaceholder}
                   className="w-full text-xs rounded-md border border-zinc-200 bg-white p-2.5 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 resize-none font-sans"
                 />
               </div>
@@ -206,14 +208,14 @@ export function StudioSidebar({
                   />
                   <div className="flex items-center justify-center gap-1.5 text-xs text-zinc-700 font-medium">
                     <Upload className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>{selectedFile ? selectedFile.name : 'Upload or replace PDF template'}</span>
+                    <span>{selectedFile ? selectedFile.name : t.studio.uploadPdf}</span>
                   </div>
                 </label>
               </div>
 
               <div className="text-[10px] text-zinc-400 font-mono flex items-center justify-between">
                 <span>{templateName && `form_type: ${templateName.toLowerCase().replace(/\s+/g, '_')}`}</span>
-                <span>{hasPdf ? 'PDF Ready' : 'No PDF yet'}</span>
+                <span>{hasPdf ? t.studio.pdfReady : t.studio.noPdfYet}</span>
               </div>
             </div>
           )}
@@ -233,10 +235,10 @@ export function StudioSidebar({
                 ) : (
                   <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
                 )}
-                <span>Incident Narrative</span>
+                <span>{t.studio.incidentNarrative}</span>
               </div>
               <Badge variant="amber" className="text-[10px] py-0 px-1.5">
-                AI Input
+                {t.studio.aiInput}
               </Badge>
             </div>
 
@@ -247,7 +249,7 @@ export function StudioSidebar({
                     rows={4}
                     value={narrativeText}
                     onChange={e => onNarrativeChange(e.target.value)}
-                    placeholder="Enter dispatch notes, officer transcript, or incident narrative..."
+                    placeholder={t.studio.narrativePlaceholder}
                     className="w-full text-xs rounded-md border border-zinc-200 bg-white p-2.5 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 resize-none"
                   />
                   <button
@@ -287,7 +289,7 @@ export function StudioSidebar({
                     className="text-[11px] flex-1 bg-white text-zinc-700"
                   >
                     <CloudRain className="w-3 h-3 mr-1 text-blue-600" />
-                    Weather
+                    {t.studio.weather}
                   </Button>
                   <Button
                     variant="outline"
@@ -296,7 +298,7 @@ export function StudioSidebar({
                     className="text-[11px] flex-1 bg-white text-zinc-700"
                   >
                     <MapPin className="w-3 h-3 mr-1 text-emerald-600" />
-                    Address
+                    {t.studio.address}
                   </Button>
 
                 </div>
@@ -319,7 +321,7 @@ export function StudioSidebar({
               ) : (
                 <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
               )}
-              <span>Fields</span>
+              <span>{t.studio.formFields}</span>
             </div>
             <span className="text-[11px] font-mono text-zinc-500 font-semibold">
               {fieldRows.length}
@@ -334,7 +336,7 @@ export function StudioSidebar({
                 <Input
                   value={filterQuery}
                   onChange={e => setFilterQuery(e.target.value)}
-                  placeholder="Filter fields..."
+                  placeholder={t.studio.searchFieldsPlaceholder}
                   className="pl-8 text-xs h-8"
                 />
               </div>
@@ -408,7 +410,7 @@ export function StudioSidebar({
                   className="flex-1 bg-white text-zinc-800 border-zinc-200 text-xs"
                 >
                   <Plus className="w-3 h-3 mr-1" />
-                  Add Field
+                  {t.studio.addField}
                 </Button>
                 <Button
                   variant="outline"
@@ -418,7 +420,7 @@ export function StudioSidebar({
                   className="flex-1 bg-zinc-900 text-white hover:bg-zinc-800 hover:text-white border-zinc-900 text-xs"
                 >
                   <Sparkles className="w-3 h-3 mr-1 text-amber-300" />
-                  {isMakeFillableLoading ? 'Extracting...' : 'AI Schema'}
+                  {isMakeFillableLoading ? t.studio.extracting : t.studio.aiSchema}
                 </Button>
               </div>
             </div>
@@ -437,7 +439,7 @@ export function StudioSidebar({
               ) : (
                 <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
               )}
-              <span>Field Properties</span>
+              <span>{t.studio.fieldProperties}</span>
             </div>
           </div>
 
@@ -447,7 +449,7 @@ export function StudioSidebar({
                 <div className="space-y-2 bg-zinc-50 p-2.5 rounded-md border border-zinc-200">
                   <div>
                     <label className="text-[10px] uppercase font-mono text-zinc-500 font-semibold block mb-1">
-                      Field Label
+                      {t.studio.fieldLabel}
                     </label>
                     <Input
                       value={selectedField.name}
@@ -460,7 +462,7 @@ export function StudioSidebar({
 
                   <div>
                     <label className="text-[10px] uppercase font-mono text-zinc-500 font-semibold block mb-1">
-                      Data Type
+                      {t.studio.dataType}
                     </label>
                     <select
                       value={selectedField.type}
@@ -479,7 +481,7 @@ export function StudioSidebar({
                 </div>
               ) : (
                 <p className="text-xs text-zinc-400 italic py-2 text-center">
-                  Select a field on the PDF or in the list to edit its properties.
+                  {t.studio.selectFieldPrompt}
                 </p>
               )}
             </div>
@@ -498,8 +500,8 @@ export function StudioSidebar({
           >
             <FileCheck className="w-4 h-4 mr-2" />
             {isExistingTemplate
-              ? isRegistering ? 'Saving Changes...' : 'Save Changes'
-              : isRegistering ? 'Registering Template...' : 'Register Template'}
+              ? isRegistering ? t.studio.savingChanges : t.studio.saveChanges
+              : isRegistering ? t.studio.registeringTemplate : t.studio.registerTemplate}
           </Button>
         ) : (
           <Button
@@ -508,7 +510,7 @@ export function StudioSidebar({
             className="w-full bg-zinc-950 hover:bg-zinc-800 text-white font-semibold h-10 text-sm shadow-sm rounded-md"
           >
             <Sparkles className="w-4 h-4 mr-2 text-amber-300" />
-            {isFilling ? 'Filling Document...' : 'Auto-Fill & Generate PDF'}
+            {isFilling ? t.studio.fillingDocument : t.studio.autoFillBtn}
           </Button>
         )}
       </div>
