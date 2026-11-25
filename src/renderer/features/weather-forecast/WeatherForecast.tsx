@@ -10,6 +10,19 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Badge } from '../../components/ui/badge'
 import { cn } from '../../lib/utils'
+import { useStore } from '../../store'
+
+const FIELD_LABELS_ES: Record<string, string> = {
+  temperature_2m: 'Temperatura (2 m)',
+  apparent_temperature: 'Temperatura Aparente',
+  relative_humidity_2m: 'Humedad Relativa',
+  precipitation: 'Precipitación',
+  precipitation_probability: 'Probabilidad de Precipitación',
+  rain: 'Lluvia',
+  wind_speed_10m: 'Velocidad del Viento (10 m)',
+  wind_direction_10m: 'Dirección del Viento (10 m)',
+  soil_temperature_0cm: 'Temperatura del Suelo',
+}
 
 // ─── Field catalogue ────────────────────────────────────────────────────────
 
@@ -83,23 +96,28 @@ interface WeatherResult {
 
 function serializeWeatherData(
   data: WeatherResult,
-  activeFields: Array<(typeof FIELD_CATALOGUE)[number]>
+  activeFields: Array<(typeof FIELD_CATALOGUE)[number]>,
+  language: string = 'en'
 ): string {
+  const isEs = language === 'es'
   if (!data.hourly || !Array.isArray(data.hourly.time)) {
-    return 'No hourly data returned.'
+    return isEs ? 'No se devolvieron datos horarios.' : 'No hourly data returned.'
   }
 
   const times = data.hourly.time
-  let text = `Latitude: ${data.latitude}, Longitude: ${data.longitude}\n`
-  text += `Recorded hourly metrics:\n`
+  let text = isEs
+    ? `Latitud: ${data.latitude}, Longitud: ${data.longitude}\n`
+    : `Latitude: ${data.latitude}, Longitude: ${data.longitude}\n`
+  text += isEs ? `Métricas horarias registradas:\n` : `Recorded hourly metrics:\n`
 
   times.forEach((t: string, idx: number) => {
     const formattedTime = t.replace('T', ' ')
     const values = activeFields
       .map(f => {
         const val = (data.hourly?.[f.key] as (number | null)[])?.[idx]
-        if (val === null || val === undefined) return `${f.label}: N/A`
-        return `${f.label}: ${val} ${f.unit}`
+        const label = isEs ? (FIELD_LABELS_ES[f.key] || f.label) : f.label
+        if (val === null || val === undefined) return `${label}: N/A`
+        return `${label}: ${val} ${f.unit}`
       })
       .join(', ')
     text += `[${formattedTime}] ${values}\n`
@@ -124,6 +142,7 @@ export function WeatherModal({
   initialLatitude,
   initialLongitude,
 }: WeatherModalProps) {
+  const language = useStore(s => s.language)
   const [latitude, setLatitude] = useState(initialLatitude ? String(initialLatitude) : '')
   const [longitude, setLongitude] = useState(initialLongitude ? String(initialLongitude) : '')
   const [startDate, setStartDate] = useState('')
@@ -211,7 +230,7 @@ export function WeatherModal({
 
   function handleAgree() {
     if (result) {
-      const serialized = serializeWeatherData(result, activeFields)
+      const serialized = serializeWeatherData(result, activeFields, language)
       onAgree(serialized)
       onClose()
     }

@@ -10,6 +10,7 @@ import {
 } from '../../lib/api'
 import { cn } from '../../lib/utils'
 import { useStore } from '../../store'
+import { useTranslation } from '../../lib/i18n'
 import { ProviderConfigModal } from './ProviderConfigModal'
 
 function SettingRow({
@@ -72,6 +73,8 @@ interface ProfileState {
 }
 
 export function Settings() {
+  const { t, language } = useTranslation()
+  const setLanguage = useStore(state => state.setLanguage)
   const refreshLLMModels = useStore(state => state.refreshLLMModels)
   const [providersOpen, setProvidersOpen] = useState(false)
   const [initialProvider, setInitialProvider] = useState<LLMProviderName>('ollama')
@@ -401,15 +404,38 @@ export function Settings() {
         </div>
 
         <div>
-          <SectionHeader icon={Globe} title="Language & Region" />
+          <SectionHeader icon={Globe} title={t.settings.languageRegion} />
           <div className="bg-white border border-zinc-200 rounded-xl px-5">
             <SettingRow
-              label="UI language"
-              description="Change the language used across the FireForm interface."
-              disabled
-              badge="Coming soon"
+              label={t.settings.uiLanguage}
+              description={t.settings.uiLanguageDesc}
             >
-              <span className="text-sm text-zinc-400 font-medium">English (EN)</span>
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setLanguage('en')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer',
+                    language === 'en'
+                      ? 'bg-zinc-900 text-white border-zinc-900 shadow-xs'
+                      : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50'
+                  )}
+                >
+                  {t.settings.languageEnglish}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguage('es')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer',
+                    language === 'es'
+                      ? 'bg-zinc-900 text-white border-zinc-900 shadow-xs'
+                      : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50'
+                  )}
+                >
+                  {t.settings.languageSpanish}
+                </button>
+              </div>
             </SettingRow>
           </div>
         </div>

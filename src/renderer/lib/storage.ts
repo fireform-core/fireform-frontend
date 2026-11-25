@@ -100,3 +100,24 @@ export function savePinnedLLMModels(pinned: PinnedLLMModels): void {
     // Storage may be unavailable in restricted renderer contexts.
   }
 }
+
+const LANGUAGE_KEY = 'fireform.language.v1'
+export type SupportedLanguage = 'en' | 'es'
+
+export function loadLanguage(): SupportedLanguage {
+  try {
+    const raw = localStorage.getItem(LANGUAGE_KEY)
+    return raw === 'es' ? 'es' : 'en'
+  } catch {
+    return 'en'
+  }
+}
+
+export function saveLanguage(lang: SupportedLanguage): void {
+  try {
+    localStorage.setItem(LANGUAGE_KEY, lang)
+  } catch {
+    // Storage may be unavailable in restricted renderer contexts.
+  }
+}
+

@@ -59,6 +59,7 @@ export function Studio() {
 
   // Filler state
   const selectedLLM = useStore(s => s.selectedLLM)
+  const language = useStore(s => s.language)
   const [weatherCoords, setWeatherCoords] = useState<{ lat: number; lon: number } | null>(null)
 
   // Modals & Loaders
@@ -400,6 +401,7 @@ export function Studio() {
         input_text: narrativeText.trim(),
         provider: selectedLLM.provider,
         model: selectedLLM.model,
+        language,
       })
 
       const outPath = typeof res?.output_pdf_path === 'string' ? res.output_pdf_path : ''
