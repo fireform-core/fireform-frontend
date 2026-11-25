@@ -24,8 +24,8 @@ import { Badge } from '../../components/ui/badge'
 import { Input } from '../../components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { cn } from '../../lib/utils'
+import { useTranslation } from '../../lib/i18n'
 import {
-  MONTH_NAMES,
   describePeriod,
   downloadBlob,
   isFuturePeriod,
@@ -36,21 +36,11 @@ import {
 
 const MIN_YEAR = 2000
 
-const PERIOD_OPTIONS: { value: PeriodType; label: string }[] = [
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-  { value: 'annual', label: 'Annual' },
-]
-
-const FORMAT_OPTIONS: { value: ReportFormat; label: string; icon: typeof FileText; hint: string }[] = [
-  { value: 'pdf', label: 'PDF', icon: FileText, hint: 'Printable document to download' },
-  { value: 'json', label: 'JSON', icon: FileJson, hint: 'Structured data shown here' },
-]
-
 const SELECT_CLASS =
   'flex h-8 w-full rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-900 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 disabled:cursor-not-allowed disabled:opacity-50'
 
 export function Reports() {
+  const { t } = useTranslation()
   const { activeReport, setActiveReport } = useStore(s => ({
     activeReport: s.activeReport,
     setActiveReport: s.setActiveReport,
@@ -60,9 +50,9 @@ export function Reports() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-900">Periodic Reports</h1>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900">{t.reports.title}</h1>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Monthly, quarterly and annual summaries of form submissions and template usage.
+            {t.reports.subtitle}
           </p>
         </div>
       </div>
@@ -80,9 +70,9 @@ export function Reports() {
         ) : (
           <div className="p-12 text-center bg-white border border-dashed border-zinc-200 rounded-lg">
             <FileChartColumn className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-zinc-800">No report yet</p>
+            <p className="text-sm font-semibold text-zinc-800">{t.reports.noReportYet}</p>
             <p className="text-xs text-zinc-500 mt-1">
-              Choose a period and format, then generate a report. It is built in the background.
+              {t.reports.noReportDesc}
             </p>
           </div>
         )}
@@ -94,6 +84,7 @@ export function Reports() {
 // ── Request form ─────────────────────────────────────────────────────────────
 
 function ReportRequestForm({ onStarted }: { onStarted: (job: Omit<ActiveReport, 'startedAt'>) => void }) {
+  const { t } = useTranslation()
   const now = new Date()
   const currentYear = now.getFullYear()
 
@@ -105,11 +96,29 @@ function ReportRequestForm({ onStarted }: { onStarted: (job: Omit<ActiveReport, 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const periodOptions: { value: PeriodType; label: string }[] = [
+    { value: 'monthly', label: t.reports.monthly },
+    { value: 'quarterly', label: t.reports.quarterly },
+    { value: 'annual', label: t.reports.annual },
+  ]
+
+  const formatOptions: { value: ReportFormat; label: string; icon: typeof FileText; hint: string }[] = [
+    { value: 'pdf', label: 'PDF', icon: FileText, hint: t.reports.pdfHint },
+    { value: 'json', label: 'JSON', icon: FileJson, hint: t.reports.jsonHint },
+  ]
+
   const yearNumber = Number(year)
   const yearValid = Number.isInteger(yearNumber) && yearNumber >= MIN_YEAR && yearNumber <= currentYear
   const selection: PeriodSelection = { periodType, year: yearNumber, month, quarter }
   const future = yearValid && isFuturePeriod(selection, now)
-  const { label } = yearValid ? describePeriod(selection) : { label: '' }
+  const periodDesc = yearValid ? describePeriod(selection) : { label: '', fileStem: '' }
+  const displayLabel = yearValid
+    ? (periodType === 'monthly'
+        ? `${t.reports.months[month - 1]} ${yearNumber}`
+        : periodType === 'quarterly'
+        ? `Q${quarter} ${yearNumber}`
+        : `${yearNumber}`)
+    : ''
   const canSubmit = yearValid && !future && !submitting
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,20 +135,19 @@ function ReportRequestForm({ onStarted }: { onStarted: (job: Omit<ActiveReport, 
     }
     try {
       const response = await generateReport(payload)
-      const period = describePeriod(selection)
       onStarted({
         reportId: response.report_id,
         format,
-        periodLabel: period.label,
-        fileStem: period.fileStem,
+        periodLabel: displayLabel || periodDesc.label,
+        fileStem: periodDesc.fileStem,
       })
     } catch (err) {
       if (err instanceof ReportApiError && err.code === 'QUEUE_UNAVAILABLE') {
-        setError('The report queue is unavailable. Make sure Redis and the worker are running, then try again.')
+        setError(t.reports.queueUnavailable)
       } else if (err instanceof TypeError) {
-        setError('Could not reach the backend at 127.0.0.1:8000.')
+        setError(t.reports.backendUnreachable)
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to start report generation.')
+        setError(err instanceof Error ? err.message : t.reports.failedToStart)
       }
     } finally {
       setSubmitting(false)
@@ -151,16 +159,16 @@ function ReportRequestForm({ onStarted }: { onStarted: (job: Omit<ActiveReport, 
       <CardHeader>
         <CardTitle className="text-sm font-semibold text-zinc-900 flex items-center gap-1.5">
           <CalendarRange className="w-4 h-4 text-zinc-500" />
-          New Report
+          {t.reports.newReport}
         </CardTitle>
-        <CardDescription className="text-xs">Pick the reporting period and output format.</CardDescription>
+        <CardDescription className="text-xs">{t.reports.newReportDesc}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <span className="text-[11px] font-semibold text-zinc-700">Period</span>
-            <div className="grid grid-cols-3 bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 text-xs" role="radiogroup" aria-label="Report period">
-              {PERIOD_OPTIONS.map(option => (
+            <span className="text-[11px] font-semibold text-zinc-700">{t.reports.period}</span>
+            <div className="grid grid-cols-3 bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 text-xs" role="radiogroup" aria-label={t.reports.period}>
+              {periodOptions.map(option => (
                 <button
                   key={option.value}
                   type="button"
@@ -180,7 +188,7 @@ function ReportRequestForm({ onStarted }: { onStarted: (job: Omit<ActiveReport, 
 
           <div className={cn('grid gap-3', periodType === 'annual' ? 'grid-cols-1' : 'grid-cols-2')}>
             <label className="space-y-1.5 block">
-              <span className="text-[11px] font-semibold text-zinc-700">Year</span>
+              <span className="text-[11px] font-semibold text-zinc-700">{t.reports.year}</span>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -194,9 +202,9 @@ function ReportRequestForm({ onStarted }: { onStarted: (job: Omit<ActiveReport, 
 
             {periodType === 'monthly' && (
               <label className="space-y-1.5 block">
-                <span className="text-[11px] font-semibold text-zinc-700">Month</span>
+                <span className="text-[11px] font-semibold text-zinc-700">{t.reports.month}</span>
                 <select className={SELECT_CLASS} value={month} onChange={e => setMonth(Number(e.target.value))}>
-                  {MONTH_NAMES.map((name, index) => (
+                  {t.reports.months.map((name, index) => (
                     <option
                       key={name}
                       value={index + 1}
@@ -211,7 +219,7 @@ function ReportRequestForm({ onStarted }: { onStarted: (job: Omit<ActiveReport, 
 
             {periodType === 'quarterly' && (
               <label className="space-y-1.5 block">
-                <span className="text-[11px] font-semibold text-zinc-700">Quarter</span>
+                <span className="text-[11px] font-semibold text-zinc-700">{t.reports.quarter}</span>
                 <select className={SELECT_CLASS} value={quarter} onChange={e => setQuarter(Number(e.target.value))}>
                   {[1, 2, 3, 4].map(q => (
                     <option
@@ -219,7 +227,7 @@ function ReportRequestForm({ onStarted }: { onStarted: (job: Omit<ActiveReport, 
                       value={q}
                       disabled={yearValid && isFuturePeriod({ ...selection, quarter: q }, now)}
                     >
-                      Q{q} ({MONTH_NAMES[(q - 1) * 3].slice(0, 3)}–{MONTH_NAMES[(q - 1) * 3 + 2].slice(0, 3)})
+                      Q{q} ({t.reports.months[(q - 1) * 3].slice(0, 3)}–{t.reports.months[(q - 1) * 3 + 2].slice(0, 3)})
                     </option>
                   ))}
                 </select>
@@ -228,9 +236,9 @@ function ReportRequestForm({ onStarted }: { onStarted: (job: Omit<ActiveReport, 
           </div>
 
           <div className="space-y-1.5">
-            <span className="text-[11px] font-semibold text-zinc-700">Format</span>
-            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Report format">
-              {FORMAT_OPTIONS.map(option => {
+            <span className="text-[11px] font-semibold text-zinc-700">{t.reports.format}</span>
+            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t.reports.format}>
+              {formatOptions.map(option => {
                 const Icon = option.icon
                 const selected = format === option.value
                 return (
@@ -257,10 +265,10 @@ function ReportRequestForm({ onStarted }: { onStarted: (job: Omit<ActiveReport, 
           </div>
 
           {!yearValid && (
-            <p className="text-[11px] text-red-700">Enter a year between {MIN_YEAR} and {currentYear}.</p>
+            <p className="text-[11px] text-red-700">{t.reports.enterYearBetween} {MIN_YEAR} {t.reports.and} {currentYear}.</p>
           )}
           {future && (
-            <p className="text-[11px] text-red-700">{label} is in the future. Pick a period that has started.</p>
+            <p className="text-[11px] text-red-700">{displayLabel} {t.reports.inFuture}</p>
           )}
           {error && (
             <div className="flex items-start gap-1.5 rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-[11px] text-red-700" role="alert">
@@ -275,7 +283,7 @@ function ReportRequestForm({ onStarted }: { onStarted: (job: Omit<ActiveReport, 
             ) : (
               <FileChartColumn className="w-3.5 h-3.5 mr-1.5" />
             )}
-            {label ? `Generate ${label} report` : 'Generate report'}
+            {displayLabel ? `${t.reports.generateReport} (${displayLabel})` : t.reports.generateReport}
           </Button>
         </form>
       </CardContent>
@@ -294,6 +302,7 @@ function ReportJobPanel({
   onRetry: () => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const state = useReportPolling(job)
   const now = useNow(state.phase === 'processing')
 
@@ -304,14 +313,14 @@ function ReportJobPanel({
       <Card>
         <CardContent className="p-10 flex flex-col items-center text-center" role="status" aria-live="polite">
           <div className="w-8 h-8 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm font-semibold text-zinc-900">Generating {job.periodLabel} report…</p>
+          <p className="text-sm font-semibold text-zinc-900">{t.reports.generatingReport.replace('{period}', job.periodLabel)}</p>
           <p className="text-xs text-zinc-500 mt-1">
-            {job.format.toUpperCase()} · running for {elapsed}s
-            {nextIn !== null && ` · checking again in ${nextIn}s`}
+            {job.format.toUpperCase()} · {t.reports.runningFor} {elapsed}{t.reports.seconds}
+            {nextIn !== null && ` · ${t.reports.checkingAgainIn} ${nextIn}${t.reports.seconds}`}
           </p>
-          <p className="text-[11px] text-zinc-400 mt-3">You can switch tabs; this keeps going in the background.</p>
+          <p className="text-[11px] text-zinc-400 mt-3">{t.reports.backgroundNotice}</p>
           <Button variant="ghost" size="sm" className="mt-4" onClick={onClose}>
-            Stop waiting
+            {t.reports.stopWaiting}
           </Button>
         </CardContent>
       </Card>
@@ -324,7 +333,7 @@ function ReportJobPanel({
         <CardContent className="p-6 text-center" role="alert">
           <TriangleAlert className="w-6 h-6 text-red-600 mx-auto mb-2" />
           <p className="text-sm font-semibold text-red-900">
-            {state.timedOut ? 'Report is taking too long' : `Could not get the ${job.periodLabel} report`}
+            {state.timedOut ? t.reports.reportTakingTooLong : t.reports.couldNotGetReport.replace('{period}', job.periodLabel)}
           </p>
           <p className="text-xs text-red-700 mt-1">{state.message}</p>
           {state.code && <p className="text-[10px] font-mono text-red-500 mt-1">{state.code}</p>}
@@ -332,12 +341,12 @@ function ReportJobPanel({
             {state.code !== 'REPORT_NOT_FOUND' && state.code !== 'REPORT_FAILED' && (
               <Button onClick={onRetry} variant="outline" size="sm" className="bg-white">
                 <RotateCw className="w-3.5 h-3.5 mr-1.5" />
-                Check again
+                {t.reports.checkAgain}
               </Button>
             )}
             <Button onClick={onClose} variant="outline" size="sm" className="bg-white">
               <X className="w-3.5 h-3.5 mr-1.5" />
-              Start over
+              {t.reports.startOver}
             </Button>
           </div>
         </CardContent>
@@ -352,17 +361,17 @@ function ReportJobPanel({
           <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-3">
             <FileText className="w-5 h-5 text-emerald-700" />
           </div>
-          <p className="text-sm font-semibold text-zinc-900">{job.periodLabel} report is ready</p>
+          <p className="text-sm font-semibold text-zinc-900">{t.reports.reportReady.replace('{period}', job.periodLabel)}</p>
           <p className="text-xs text-zinc-500 mt-1 font-mono">
             {state.filename} · {formatBytes(state.blob.size)}
           </p>
           <div className="flex gap-2 mt-4">
             <Button onClick={() => downloadBlob(state.blob, state.filename)}>
               <Download className="w-3.5 h-3.5 mr-1.5" />
-              Download PDF
+              {t.reports.downloadPdf}
             </Button>
             <Button variant="outline" onClick={onClose}>
-              New report
+              {t.reports.newReportBtn}
             </Button>
           </div>
         </CardContent>
@@ -384,6 +393,7 @@ function JsonReportView({
   fileStem: string
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const { summary, submissions } = report
   const { setPreviewPath, setActiveTab } = useStore(s => ({
     setPreviewPath: s.setPreviewPath,
@@ -407,39 +417,39 @@ function JsonReportView({
             <Badge variant="outline" className="text-[10px] font-mono capitalize">{report.period_type}</Badge>
           </h2>
           <p className="text-[11px] text-zinc-500 font-mono">
-            {formatDate(summary.date_from)} – {formatDate(summary.date_to)} · generated {formatDateTime(report.generated_at)}
+            {formatDate(summary.date_from)} – {formatDate(summary.date_to)} · {t.reports.generated} {formatDateTime(report.generated_at)}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleDownload}>
             <Download className="w-3.5 h-3.5 mr-1.5" />
-            Download JSON
+            {t.reports.downloadJson}
           </Button>
           <Button variant="ghost" size="sm" onClick={onClose}>
-            New report
+            {t.reports.newReportBtn}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatCard label="Total submissions" value={summary.total_submissions} />
-        <StatCard label="Templates used" value={templateEntries.length} />
-        <StatCard label="Most active template" value={mostActiveTemplate} />
+        <StatCard label={t.reports.totalSubmissions} value={summary.total_submissions} />
+        <StatCard label={t.reports.templatesUsed} value={templateEntries.length} />
+        <StatCard label={t.reports.mostActiveTemplate} value={mostActiveTemplate} />
       </div>
 
-      <BreakdownCard title="Submissions by template" data={summary.by_template} barClass="bg-red-600" />
+      <BreakdownCard title={t.reports.submissionsByTemplate} data={summary.by_template} barClass="bg-red-600" emptyText={t.reports.noDataForPeriod} />
 
       {summary.groups.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-zinc-900">Breakdown by period</CardTitle>
+            <CardTitle className="text-sm font-semibold text-zinc-900">{t.reports.breakdownByPeriod}</CardTitle>
           </CardHeader>
           <CardContent>
             <table className="w-full text-left text-xs">
               <thead className="text-zinc-500 uppercase font-mono text-[10px] border-b border-zinc-200">
                 <tr>
-                  <th className="py-2">Period</th>
-                  <th className="py-2 text-right">Submissions</th>
+                  <th className="py-2">{t.reports.period}</th>
+                  <th className="py-2 text-right">{t.reports.submissions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
@@ -457,21 +467,21 @@ function JsonReportView({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-zinc-900">Form Submissions ({submissions.length})</CardTitle>
+          <CardTitle className="text-sm font-semibold text-zinc-900">{t.reports.formSubmissions} ({submissions.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {submissions.length === 0 ? (
-            <p className="py-6 text-center text-xs text-zinc-400">No form submissions were recorded in this period.</p>
+            <p className="py-6 text-center text-xs text-zinc-400">{t.reports.noSubmissionsInPeriod}</p>
           ) : (
             <div className="max-h-96 overflow-auto">
               <table className="w-full text-left text-xs">
                 <thead className="sticky top-0 bg-white text-zinc-500 uppercase font-mono text-[10px] border-b border-zinc-200">
                   <tr>
-                    <th className="py-2 pr-2">ID</th>
-                    <th className="py-2 pr-2">Date & Time</th>
-                    <th className="py-2 pr-2">Template</th>
-                    <th className="py-2 pr-2">Input Preview</th>
-                    <th className="py-2 text-right">PDF</th>
+                    <th className="py-2 pr-2">{t.reports.id}</th>
+                    <th className="py-2 pr-2">{t.reports.dateTime}</th>
+                    <th className="py-2 pr-2">{t.reports.template}</th>
+                    <th className="py-2 pr-2">{t.reports.inputPreview}</th>
+                    <th className="py-2 text-right">{t.reports.pdf}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
@@ -500,7 +510,7 @@ function JsonReportView({
                               setActiveTab('pdfPreviewer')
                             }}
                           >
-                            Preview
+                            {t.reports.preview}
                           </Button>
                         ) : (
                           <span className="text-zinc-400 font-mono">—</span>
@@ -529,7 +539,17 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   )
 }
 
-function BreakdownCard({ title, data, barClass }: { title: string; data: Record<string, number>; barClass: string }) {
+function BreakdownCard({
+  title,
+  data,
+  barClass,
+  emptyText = 'No data for this period.',
+}: {
+  title: string
+  data: Record<string, number>
+  barClass: string
+  emptyText?: string
+}) {
   const entries = Object.entries(data).sort((a, b) => b[1] - a[1])
   const max = Math.max(1, ...entries.map(([, count]) => count))
   return (
@@ -539,7 +559,7 @@ function BreakdownCard({ title, data, barClass }: { title: string; data: Record<
       </CardHeader>
       <CardContent className="space-y-2.5">
         {entries.length === 0 ? (
-          <p className="py-4 text-center text-xs text-zinc-400">No data for this period.</p>
+          <p className="py-4 text-center text-xs text-zinc-400">{emptyText}</p>
         ) : (
           entries.map(([key, count]) => (
             <div key={key}>

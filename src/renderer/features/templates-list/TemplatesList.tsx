@@ -11,8 +11,9 @@ import {
   Info,
 } from 'lucide-react'
 import { useStore } from '../../store'
+import { useTranslation } from '../../lib/i18n'
 import { TYPE_VALUE_TO_LABEL } from '../../lib/constants'
-import { pluralize, cn } from '../../lib/utils'
+import { cn } from '../../lib/utils'
 import type { TemplatesView } from '../../lib/storage'
 import { loadTemplatesView, saveTemplatesView } from '../../lib/storage'
 import { useDeleteTemplate } from '../../lib/useDeleteTemplate'
@@ -54,6 +55,7 @@ function getFieldEntries(fields: Record<string, any> = {}): Array<{ name: string
 }
 
 export function TemplatesList() {
+  const { t } = useTranslation()
   const { templates, setActiveTab, setPreviewPath } = useStore(s => ({
     templates: s.templates,
     setActiveTab: s.setActiveTab,
@@ -116,9 +118,9 @@ export function TemplatesList() {
       {/* Top Header & Search Bar (Photo 2 white & black aesthetic) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-900">Templates Library</h1>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900">{t.templatesList.title}</h1>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Registered incident forms and government reporting templates.
+            {t.templatesList.subtitle}
           </p>
         </div>
 
@@ -128,7 +130,7 @@ export function TemplatesList() {
             <Input
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search templates..."
+              placeholder={t.templatesList.searchPlaceholder}
               className="pl-8 text-xs bg-white"
             />
           </div>
@@ -141,7 +143,7 @@ export function TemplatesList() {
                 'p-1.5 rounded transition-colors',
                 view === 'grid' ? 'bg-white shadow-xs text-zinc-900' : 'text-zinc-500 hover:text-zinc-900'
               )}
-              title="Grid View"
+              title={t.templatesList.gridView}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
@@ -152,7 +154,7 @@ export function TemplatesList() {
                 'p-1.5 rounded transition-colors',
                 view === 'list' ? 'bg-white shadow-xs text-zinc-900' : 'text-zinc-500 hover:text-zinc-900'
               )}
-              title="List View"
+              title={t.templatesList.listView}
             >
               <ListIcon className="w-3.5 h-3.5" />
             </button>
@@ -163,7 +165,7 @@ export function TemplatesList() {
             className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs h-8"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
-            New Template
+            {t.templatesList.newTemplate}
           </Button>
         </div>
       </div>
@@ -172,9 +174,9 @@ export function TemplatesList() {
       {filteredTemplates.length === 0 ? (
         <div className="p-12 text-center bg-white border border-dashed border-zinc-200 rounded-lg">
           <FileText className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-zinc-800">No templates found</p>
+          <p className="text-sm font-semibold text-zinc-800">{t.templatesList.noTemplatesFound}</p>
           <p className="text-xs text-zinc-500 mt-1">
-            Create your first template in the Studio workspace.
+            {t.templatesList.noTemplatesDesc}
           </p>
           <Button
             onClick={() => setActiveTab('studio')}
@@ -182,7 +184,7 @@ export function TemplatesList() {
             size="sm"
             className="mt-4"
           >
-            Open Studio
+            {t.templatesList.openStudio}
           </Button>
         </div>
       ) : view === 'grid' ? (
@@ -212,7 +214,7 @@ export function TemplatesList() {
                       </div>
                     </div>
                     <Badge variant="outline" className="text-[10px] font-mono">
-                      {pluralize(count, 'field')}
+                      {count} {count === 1 ? t.templatesList.field : t.templatesList.fields}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -229,7 +231,7 @@ export function TemplatesList() {
                     ))}
                     {fieldEntries.length > 4 && (
                       <span className="text-[10px] text-zinc-400 px-1 py-0.5">
-                        +{fieldEntries.length - 4} more
+                        +{fieldEntries.length - 4} {t.templatesList.more}
                       </span>
                     )}
                   </div>
@@ -242,7 +244,7 @@ export function TemplatesList() {
                       className="text-zinc-600 hover:text-zinc-900 text-xs"
                     >
                       <Eye className="w-3 h-3 mr-1" />
-                      Preview
+                      {t.templatesList.preview}
                     </Button>
                     <Button
                       variant="ghost"
@@ -251,7 +253,7 @@ export function TemplatesList() {
                       className="text-zinc-600 hover:text-zinc-900 text-xs"
                     >
                       <Info className="w-3 h-3 mr-1" />
-                      Description
+                      {t.templatesList.description}
                     </Button>
 
                     <div className="flex items-center gap-1">
@@ -262,7 +264,7 @@ export function TemplatesList() {
                         className="bg-zinc-900 text-white hover:bg-zinc-800 text-xs"
                       >
                         <Layers className="w-3 h-3 mr-1" />
-                        Open in Studio
+                        {t.templatesList.openInStudio}
                       </Button>
                       <Button
                         variant="ghost"
@@ -285,10 +287,10 @@ export function TemplatesList() {
           <table className="w-full text-left text-xs">
             <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase font-mono text-[10px]">
               <tr>
-                <th className="px-4 py-2.5">Template Name</th>
-                <th className="px-4 py-2.5">PDF Path</th>
-                <th className="px-4 py-2.5">Fields</th>
-                <th className="px-4 py-2.5 text-right">Actions</th>
+                <th className="px-4 py-2.5">{t.templatesList.templateName}</th>
+                <th className="px-4 py-2.5">{t.templatesList.pdfPath}</th>
+                <th className="px-4 py-2.5">{t.templatesList.fields}</th>
+                <th className="px-4 py-2.5 text-right">{t.templatesList.actions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
@@ -309,7 +311,7 @@ export function TemplatesList() {
                     </td>
                     <td className="px-4 py-3 font-mono text-zinc-700">
                       <Badge variant="outline" className="text-[10px]">
-                        {pluralize(count, 'field')}
+                        {count} {count === 1 ? t.templatesList.field : t.templatesList.fields}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -320,7 +322,7 @@ export function TemplatesList() {
                           onClick={() => handlePreview(tpl.pdf_path)}
                           className="text-zinc-600"
                         >
-                          Preview
+                          {t.templatesList.preview}
                         </Button>
                         <Button
                           variant="ghost"
@@ -329,7 +331,7 @@ export function TemplatesList() {
                           className="text-zinc-600 hover:text-zinc-900 text-xs"
                         >
                           <Info className="w-3 h-3 mr-1" />
-                          Description
+                          {t.templatesList.description}
                         </Button>
                         <Button
                           variant="default"
@@ -337,7 +339,7 @@ export function TemplatesList() {
                           onClick={() => handleOpenInStudio(tpl.id)}
                           className="bg-zinc-900 text-white"
                         >
-                          Studio
+                          {t.templatesList.studio}
                         </Button>
                         <Button
                           variant="ghost"
@@ -360,9 +362,12 @@ export function TemplatesList() {
       {/* Unsaved Studio Draft Dialog */}
       <ConfirmDialog
         isOpen={Boolean(studioGuard.pending)}
-        title="Unsaved Changes"
-        message={`Discard unsaved changes to ${studioGuard.draftName.trim() ? `"${studioGuard.draftName.trim()}"` : 'the new template'}?`}
-        confirmLabel="Discard"
+        title={t.templatesList.unsavedTitle}
+        message={t.templatesList.unsavedMessage.replace(
+          '{name}',
+          studioGuard.draftName.trim() ? `"${studioGuard.draftName.trim()}"` : t.templatesList.newTemplateFallback
+        )}
+        confirmLabel={t.templatesList.discard}
         onConfirm={studioGuard.confirm}
         onCancel={studioGuard.cancel}
       />
@@ -370,9 +375,9 @@ export function TemplatesList() {
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={Boolean(del.pending)}
-        title="Delete Template"
-        message={`Are you sure you want to delete "${del.pending?.name}"?`}
-        confirmLabel="Delete"
+        title={t.templatesList.deleteTitle}
+        message={t.templatesList.deleteMessage.replace('{name}', del.pending?.name || '')}
+        confirmLabel={t.templatesList.delete}
         busy={del.busy}
         error={del.error}
         onConfirm={del.confirm}
@@ -403,7 +408,7 @@ export function TemplatesList() {
                     id="template-description-title"
                     className="text-sm font-semibold text-zinc-900"
                   >
-                    Template Description
+                    {t.templatesList.templateDescriptionTitle}
                   </h3>
                   <p className="text-[10px] text-zinc-500">
                     {selectedDescription.name}
@@ -412,7 +417,7 @@ export function TemplatesList() {
               </div>
 
               <p className="text-sm leading-6 text-zinc-700 whitespace-pre-wrap">
-                {selectedDescription.description || 'No description provided.'}
+                {selectedDescription.description || t.templatesList.noDescription}
               </p>
             </div>
 
@@ -422,7 +427,7 @@ export function TemplatesList() {
                 variant="secondary"
                 onClick={() => setSelectedDescription(null)}
               >
-                Close
+                {t.templatesList.close}
               </Button>
             </div>
           </div>
