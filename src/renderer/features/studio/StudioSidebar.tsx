@@ -50,6 +50,8 @@ interface StudioSidebarProps {
   onToggleRecording: () => void
 
   onFillForm: () => void
+  includeProfileContext: boolean
+  onIncludeProfileContextChange: (enabled: boolean) => void
   isFilling: boolean
   onOpenWeather: () => void
   onOpenZipcode: () => void
@@ -82,6 +84,8 @@ export function StudioSidebar({
   isTranscribing,
   onToggleRecording,
   onFillForm,
+  includeProfileContext,
+  onIncludeProfileContextChange,
   isFilling,
   onOpenWeather,
   onOpenZipcode,
@@ -502,14 +506,24 @@ export function StudioSidebar({
               : isRegistering ? 'Registering Template...' : 'Register Template'}
           </Button>
         ) : (
-          <Button
-            onClick={onFillForm}
-            disabled={isFilling || (!narrativeText.trim() && !selectedFieldKey)}
-            className="w-full bg-zinc-950 hover:bg-zinc-800 text-white font-semibold h-10 text-sm shadow-sm rounded-md"
-          >
-            <Sparkles className="w-4 h-4 mr-2 text-amber-300" />
-            {isFilling ? 'Filling Document...' : 'Auto-Fill & Generate PDF'}
-          </Button>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-xs text-zinc-700">
+              <input
+                type="checkbox"
+                checked={includeProfileContext}
+                onChange={e => onIncludeProfileContextChange(e.target.checked)}
+              />
+              <span>Include my profile context when filling</span>
+            </label>
+            <Button
+              onClick={onFillForm}
+              disabled={isFilling || (!narrativeText.trim() && !selectedFieldKey)}
+              className="w-full bg-zinc-950 hover:bg-zinc-800 text-white font-semibold h-10 text-sm shadow-sm rounded-md"
+            >
+              <Sparkles className="w-4 h-4 mr-2 text-amber-300" />
+              {isFilling ? 'Filling Document...' : 'Auto-Fill & Generate PDF'}
+            </Button>
+          </div>
         )}
       </div>
     </aside>

@@ -464,6 +464,7 @@ export async function fillTemplate(payload: {
   input_text: string
   provider?: string
   model?: string
+  profile_id?: string
 }): Promise<Record<string, unknown>> {
   const response = await fetch(`${API_BASE_URL}/forms/fill`, {
     method: 'POST',
